@@ -1,30 +1,51 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useToast } from '../contexts/ToastContext';
+import apiService from '../utils/api';
 
 const StressScore = () => {
-  const [tasks, setTasks] = useState([])
+  const { showSuccess, showError } = useToast();
+  const [tasks, setTasks] = useState(() => {
+    const savedTasks = localStorage.getItem('stressScoreTasks');
+    return savedTasks ? JSON.parse(savedTasks) : [];
+  })
   const [newTask, setNewTask] = useState('')
   const [stressScore, setStressScore] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const addTask = () => {
     if (newTask.trim()) {
-      setTasks([...tasks, { id: Date.now(), text: newTask, completed: false }])
+      const newTasks = [...tasks, { id: Date.now(), text: newTask, completed: false }];
+      setTasks(newTasks);
+      localStorage.setItem('stressScoreTasks', JSON.stringify(newTasks));
       setNewTask('')
+      showSuccess('Task added successfully!');
+    } else {
+      showError('Please enter a task description');
     }
   }
 
   const toggleTask = (id) => {
-    setTasks(tasks.map(task => 
+    const updatedTasks = tasks.map(task => 
       task.id === id ? { ...task, completed: !task.completed } : task
-    ))
+    );
+    setTasks(updatedTasks);
+    localStorage.setItem('stressScoreTasks', JSON.stringify(updatedTasks));
   }
 
   const removeTask = (id) => {
-    setTasks(tasks.filter(task => task.id !== id))
+    const taskToRemove = tasks.find(task => task.id === id);
+    const updatedTasks = tasks.filter(task => task.id !== id);
+    setTasks(updatedTasks);
+    localStorage.setItem('stressScoreTasks', JSON.stringify(updatedTasks));
+    showSuccess(`Removed task: "${taskToRemove.text}"`);
   }
 
   const calculateStressScore = () => {
-    if (tasks.length === 0) return 0
+    if (tasks.length === 0) {
+      showError('Please add some tasks first');
+      return;
+    }
     
     const completedTasks = tasks.filter(task => task.completed).length
     const totalTasks = tasks.length
@@ -32,13 +53,31 @@ const StressScore = () => {
     
     // Simple stress score calculation
     let score = 0
-    if (completionRate >= 80) score = 1-2
-    else if (completionRate >= 60) score = 3-4
-    else if (completionRate >= 40) score = 5-6
-    else if (completionRate >= 20) score = 7-8
-    else score = 9-10
+    if (completionRate >= 80) score = Math.floor(Math.random() * 2) + 1 // 1-2
+    else if (completionRate >= 60) score = Math.floor(Math.random() * 2) + 3 // 3-4
+    else if (completionRate >= 40) score = Math.floor(Math.random() * 2) + 5 // 5-6
+    else if (completionRate >= 20) score = Math.floor(Math.random() * 2) + 7 // 7-8
+    else score = Math.floor(Math.random() * 2) + 9 // 9-10
     
     setStressScore(score)
+    showSuccess(`Stress score calculated: ${score}/10`);
+  }
+
+  const submitStressScore = async () => {
+    if (stressScore === null) {
+      showError('Please calculate your stress score first');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await apiService.submitStressScore({ score: stressScore });
+      showSuccess('Stress score submitted successfully!');
+    } catch (error) {
+      showError('Failed to submit stress score. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -58,7 +97,12 @@ const StressScore = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Task Management */}
           <div className="bg-white rounded-2xl p-6 shadow-md">
-            <h2 className="text-xl font-semibold text-[#212121] mb-6">Add Your Daily Tasks</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-[#212121]">Add Your Daily Tasks</h2>
+              <span className="text-sm text-gray-500">
+                {tasks.length} task{tasks.length !== 1 ? 's' : ''} • {tasks.filter(t => t.completed).length} completed
+              </span>
+            </div>
             
             <div className="flex gap-2 mb-6">
               <input
@@ -77,6 +121,21 @@ const StressScore = () => {
               </button>
             </div>
 
+            {tasks.length > 0 && (
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <span>Progress</span>
+                  <span>{tasks.filter(t => t.completed).length}/{tasks.length} completed</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${(tasks.filter(t => t.completed).length / tasks.length) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-3">
               {tasks.map((task) => (
                 <div key={task.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
@@ -93,24 +152,42 @@ const StressScore = () => {
                   </div>
                   <button
                     onClick={() => removeTask(task.id)}
-                    className="text-red-500 hover:text-red-700 transition-colors"
+                    className="text-red-500 hover:text-red-700 transition-colors px-2 py-1 rounded hover:bg-red-50"
                   >
                     Remove
                   </button>
                 </div>
               ))}
               {tasks.length === 0 && (
-                <p className="text-[#4F4F4F] text-center py-8">No tasks added yet</p>
+                <div className="text-center py-8">
+                  <p className="text-[#4F4F4F] mb-2">No tasks added yet</p>
+                  <p className="text-sm text-gray-400">Add some tasks to calculate your stress score</p>
+                </div>
               )}
             </div>
 
-            <button
-              onClick={calculateStressScore}
-              disabled={tasks.length === 0}
-              className="w-full mt-6 bg-gradient-to-r from-[#212121] to-gray-800 text-white py-3 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              Calculate Stress Score
-            </button>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={calculateStressScore}
+                disabled={tasks.length === 0}
+                className="flex-1 bg-gradient-to-r from-[#212121] to-gray-800 text-white py-3 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Calculate Stress Score
+              </button>
+              {tasks.length > 0 && (
+                <button
+                  onClick={() => {
+                    setTasks([]);
+                    setStressScore(null);
+                    localStorage.removeItem('stressScoreTasks');
+                    showSuccess('All tasks cleared!');
+                  }}
+                  className="px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Results */}
@@ -128,6 +205,20 @@ const StressScore = () => {
                     {stressScore >= 9 && "Critical stress level - Please reach out for help immediately."}
                   </p>
                 </div>
+                <button
+                  onClick={submitStressScore}
+                  disabled={isSubmitting}
+                  className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Submitting...
+                    </div>
+                  ) : (
+                    'Submit Stress Score'
+                  )}
+                </button>
               </div>
             )}
 

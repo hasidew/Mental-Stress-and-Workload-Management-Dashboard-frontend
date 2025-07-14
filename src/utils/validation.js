@@ -80,6 +80,14 @@ export const validationRules = {
   select: (value, fieldName) => {
     if (!value || value === '') return `Please select a ${fieldName}`;
     return null;
+  },
+
+  // Array validation
+  array: (value, fieldName, min = 0, max = null) => {
+    if (!value || value.length === 0) return `${fieldName} is required`;
+    if (value.length < min) return `${fieldName} must have at least ${min} item(s)`;
+    if (max && value.length > max) return `${fieldName} must have no more than ${max} item(s)`;
+    return null;
   }
 };
 

@@ -1,23 +1,29 @@
 import React, { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import { validationRules, validateForm } from "../utils/validation";
 import { useAuth } from "../contexts/AuthContext";
 
-const SignIn = () => {
-  const [form, setForm] = useState({ username: "", password: "" });
+const AdminSignUp = () => {
+  const { showError, showSuccess } = useToast();
+  const { registerAdmin } = useAuth();
+  const navigate = useNavigate();
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const { showError, showSuccess, showWarning, showInfo } = useToast();
-  const { login } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [form, setForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: ""
+  });
 
-  // Validation schema for SignIn form
+  // Validation schema for AdminSignUp form
   const validationSchema = {
-    username: [validationRules.email],
-    password: [validationRules.required]
+    username: [validationRules.required, validationRules.email],
+    email: [validationRules.required, validationRules.email],
+    password: [validationRules.required, validationRules.password],
+    confirmPassword: [validationRules.required]
   };
 
   const handleChange = (e) => {
@@ -45,10 +51,16 @@ const SignIn = () => {
     e.preventDefault();
     
     // Mark all fields as touched
-    setTouched({ username: true, password: true });
+    setTouched({ username: true, email: true, password: true, confirmPassword: true });
     
     // Validate entire form
     const formErrors = validateForm(form, validationSchema);
+    
+    // Additional validation for password confirmation
+    if (form.password !== form.confirmPassword) {
+      formErrors.confirmPassword = "Passwords do not match";
+    }
+    
     setErrors(formErrors);
     
     if (Object.keys(formErrors).length > 0) {
@@ -58,14 +70,18 @@ const SignIn = () => {
     
     try {
       setIsLoading(true);
-      await login(form);
-      showSuccess("Successfully signed in!");
       
-      // Redirect to intended page or dashboard
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
+      const adminData = {
+        username: form.username,
+        email: form.email,
+        password: form.password
+      };
+      
+      await registerAdmin(adminData);
+      showSuccess("Admin account created successfully! Welcome to MindCare.");
+      navigate('/admin-dashboard');
     } catch (error) {
-      showError(error.message || "Login failed. Please try again.");
+      showError(error.message || "Registration failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -79,10 +95,11 @@ const SignIn = () => {
           <div className="flex justify-center mb-6">
             <img src="/images/logo.png" alt="MindCare Logo" className="w-16 h-16 object-contain" />
           </div>
+          
           {/* Header */}
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-[#212121] mb-2">Welcome Back</h2>
-            <p className="text-[#4F4F4F]">Sign in to your account to continue</p>
+            <h2 className="text-3xl font-bold text-[#212121] mb-2">Admin Registration</h2>
+            <p className="text-[#4F4F4F]">Create your admin account to manage the system</p>
           </div>
 
           {/* Form */}
@@ -91,6 +108,27 @@ const SignIn = () => {
               <label className="block text-[#212121] font-medium mb-2">Email Address</label>
               <input
                 type="email"
+                name="email"
+                required
+                value={form.email}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`w-full p-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+                  touched.email && errors.email 
+                    ? 'border-red-500 focus:ring-red-500' 
+                    : 'border-gray-200 focus:ring-blue-500'
+                }`}
+                placeholder="Enter your email address"
+              />
+              {touched.email && errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[#212121] font-medium mb-2">Username</label>
+              <input
+                type="text"
                 name="username"
                 required
                 value={form.username}
@@ -101,7 +139,7 @@ const SignIn = () => {
                     ? 'border-red-500 focus:ring-red-500' 
                     : 'border-gray-200 focus:ring-blue-500'
                 }`}
-                placeholder="Enter your email address"
+                placeholder="Enter your username"
               />
               {touched.username && errors.username && (
                 <p className="text-red-500 text-sm mt-1">{errors.username}</p>
@@ -130,14 +168,26 @@ const SignIn = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center space-x-2">
-                <input type="checkbox" className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
-                <span className="text-sm text-[#4F4F4F]">Remember me</span>
-              </label>
-              <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-800 transition-colors">
-                Forgot password?
-              </Link>
+            <div>
+              <label className="block text-[#212121] font-medium mb-2">Confirm Password</label>
+              <input
+                type="password"
+                name="confirmPassword"
+                required
+                minLength="8"
+                value={form.confirmPassword}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`w-full p-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+                  touched.confirmPassword && errors.confirmPassword 
+                    ? 'border-red-500 focus:ring-red-500' 
+                    : 'border-gray-200 focus:ring-blue-500'
+                }`}
+                placeholder="Confirm your password"
+              />
+              {touched.confirmPassword && errors.confirmPassword && (
+                <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
+              )}
             </div>
 
             <button
@@ -148,59 +198,22 @@ const SignIn = () => {
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Signing In...
+                  Creating Account...
                 </div>
               ) : (
-                'Sign In'
+                'Create Admin Account'
               )}
             </button>
           </form>
 
-          {/* Sign Up Link */}
+          {/* Sign In Link */}
           <div className="text-center mt-6">
             <p className="text-[#4F4F4F]">
-              Don't have an account?{" "}
-              <Link to="/signup" className="text-blue-600 hover:text-blue-800 font-semibold transition-colors">
-                Sign up here
+              Already have an account?{" "}
+              <Link to="/signin" className="text-blue-600 hover:text-blue-800 font-semibold transition-colors">
+                Sign in here
               </Link>
             </p>
-            <p className="text-[#4F4F4F] mt-2">
-              Are you an admin?{" "}
-              <Link to="/admin-signup" className="text-blue-600 hover:text-blue-800 font-semibold transition-colors">
-                Admin registration
-              </Link>
-            </p>
-          </div>
-
-          {/* Toast Demo Buttons */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-3">Toast Demo:</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => showError("This is an error message")}
-                className="px-3 py-2 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-              >
-                Error Toast
-              </button>
-              <button
-                onClick={() => showSuccess("This is a success message")}
-                className="px-3 py-2 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
-              >
-                Success Toast
-              </button>
-              <button
-                onClick={() => showWarning("This is a warning message")}
-                className="px-3 py-2 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 transition-colors"
-              >
-                Warning Toast
-              </button>
-              <button
-                onClick={() => showInfo("This is an info message")}
-                className="px-3 py-2 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-              >
-                Info Toast
-              </button>
-            </div>
           </div>
         </div>
 
@@ -216,4 +229,4 @@ const SignIn = () => {
   );
 };
 
-export default SignIn;
+export default AdminSignUp; 

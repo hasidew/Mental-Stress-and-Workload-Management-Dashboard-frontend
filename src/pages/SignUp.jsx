@@ -1,13 +1,17 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import { validationRules, validateForm } from "../utils/validation";
+import { useAuth } from "../contexts/AuthContext";
 
 const SignUp = () => {
   const { showError, showSuccess, showWarning, showInfo } = useToast();
+  const { register } = useAuth();
+  const navigate = useNavigate();
   const [role, setRole] = useState("");
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -27,24 +31,48 @@ const SignUp = () => {
     password: "",
   });
 
-  // Validation schema for SignUp form
-  const validationSchema = {
-    firstName: [validationRules.name],
-    lastName: [validationRules.name],
-    gender: [validationRules.select],
-    nic: [validationRules.nic],
-    birthday: [validationRules.date],
-    contact: [validationRules.phone],
-    jobRole: [validationRules.select],
-    employeeId: [validationRules.required],
-    department: [validationRules.required],
-    team: [validationRules.required],
-    address: [validationRules.required],
-    supervisorName: [validationRules.name],
-    registrationNumber: [validationRules.required],
-    hospital: [validationRules.required],
-    username: [validationRules.email],
-    password: [validationRules.password]
+  // Dynamic validation schema based on selected role
+  const getValidationSchema = () => {
+    const baseSchema = {
+      firstName: [(value) => validationRules.name(value, 'First Name')],
+      lastName: [(value) => validationRules.name(value, 'Last Name')],
+      gender: [(value) => validationRules.select(value, 'gender')],
+      nic: [validationRules.nic],
+      birthday: [(value) => validationRules.date(value, 'Birthday')],
+      contact: [(value) => {
+      if (!value || value.trim() === '') return null; // Optional field
+      return validationRules.phone(value);
+    }],
+      jobRole: [(value) => validationRules.select(value, 'job role')],
+      username: [validationRules.email],
+      password: [validationRules.password]
+    };
+
+    // Add role-specific validations
+    if (role === "Employee" || role === "Supervisor" || role === "HR Manager") {
+      baseSchema.employeeId = [(value) => validationRules.required(value, 'Employee ID')];
+    }
+
+    if (role === "Employee" || role === "Supervisor") {
+      baseSchema.department = [(value) => validationRules.required(value, 'Department')];
+      baseSchema.team = [(value) => validationRules.required(value, 'Team')];
+    }
+
+    if (role === "Employee") {
+      baseSchema.address = [(value) => validationRules.required(value, 'Address')];
+      // Supervisor name is optional for employees
+      baseSchema.supervisorName = [(value) => {
+        if (!value || value.trim() === '') return null; // Optional field
+        return validationRules.name(value, 'Supervisor Name');
+      }];
+    }
+
+    if (role === "Consultant") {
+      baseSchema.registrationNumber = [(value) => validationRules.required(value, 'Registration Number')];
+      baseSchema.hospital = [(value) => validationRules.required(value, 'Hospital')];
+    }
+
+    return baseSchema;
   };
 
   const handleChange = (e) => {
@@ -66,13 +94,16 @@ const SignUp = () => {
     setTouched(prev => ({ ...prev, [name]: true }));
     
     // Validate field on blur
-    const fieldErrors = validateForm({ [name]: value }, { [name]: validationSchema[name] });
-    if (fieldErrors[name]) {
-      setErrors(prev => ({ ...prev, [name]: fieldErrors[name] }));
+    const validationSchema = getValidationSchema();
+    if (validationSchema[name]) {
+      const fieldErrors = validateForm({ [name]: value }, { [name]: validationSchema[name] });
+      if (fieldErrors[name]) {
+        setErrors(prev => ({ ...prev, [name]: fieldErrors[name] }));
+      }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Mark all fields as touched
@@ -83,18 +114,49 @@ const SignUp = () => {
       return newTouched;
     });
     
+    // Debug: Log form data
+    console.log('Form data:', form);
+    console.log('Role state:', role);
+    
     // Validate entire form
+    const validationSchema = getValidationSchema();
     const formErrors = validateForm(form, validationSchema);
     setErrors(formErrors);
     
-    if (Object.keys(formErrors).length > 0) {
-      showError("Please fix the errors in the form");
+    // Additional check for role selection
+    if (!role) {
+      showError('Please select a job role first');
       return;
     }
     
-    // Simulate successful registration
-    showSuccess("Account created successfully! Welcome to MindCare.");
-    console.log(form);
+    if (Object.keys(formErrors).length > 0) {
+      console.log('Validation errors:', formErrors);
+      const errorMessages = Object.entries(formErrors).map(([field, error]) => `${field}: ${error}`);
+      showError(`Please fix the following errors:\n${errorMessages.join('\n')}`);
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      // Map form data to API format
+      const userData = {
+        username: form.username,
+        email: form.username, // Using username as email for now
+        password: form.password,
+        role: role.toLowerCase().replace(' ', '_') // Convert role to API format
+      };
+      
+      console.log('Registering with role:', userData.role);
+      
+      await register(userData);
+      showSuccess("Account created successfully! Welcome to MindCare.");
+      navigate('/dashboard');
+    } catch (error) {
+      showError(error.message || "Registration failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getRoleIcon = (role) => {
