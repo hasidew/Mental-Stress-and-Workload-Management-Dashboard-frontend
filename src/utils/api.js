@@ -327,6 +327,10 @@ class ApiService {
     return await this.request('/admin/teams');
   }
 
+  async getSupervisorLessTeamsByDepartment(departmentId) {
+    return await this.request(`/admin/teams/department/${departmentId}/supervisor-less`);
+  }
+
   async updateTeam(teamId, teamData) {
     return await this.request(`/admin/teams/${teamId}`, {
       method: 'PUT',

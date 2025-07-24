@@ -13,6 +13,7 @@ const SignUp = () => {
   const [touched, setTouched] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -48,6 +49,20 @@ const SignUp = () => {
     fetchDepartments();
   }, []);
 
+  const fetchTeamsByDepartment = async (departmentName) => {
+    try {
+      const department = departments.find(dept => dept.name === departmentName);
+      if (department) {
+        const apiService = (await import('../utils/api')).default;
+        const data = await apiService.getSupervisorLessTeamsByDepartment(department.id);
+        setTeams(data);
+      }
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+      setTeams([]);
+    }
+  };
+
   // Dynamic validation schema based on selected role
   const getValidationSchema = () => {
     const baseSchema = {
@@ -74,6 +89,10 @@ const SignUp = () => {
       baseSchema.department = [(value) => validationRules.required(value, 'Department')];
     }
 
+    if (role === "Supervisor") {
+      baseSchema.team = [(value) => validationRules.required(value, 'Team')];
+    }
+
     if (role === "Consultant") {
       baseSchema.registrationNumber = [(value) => validationRules.required(value, 'Registration Number')];
       baseSchema.hospital = [(value) => validationRules.required(value, 'Hospital')];
@@ -88,6 +107,11 @@ const SignUp = () => {
 
     if (name === "jobRole") {
       setRole(value);
+    }
+
+    // Fetch teams when department changes for supervisors
+    if (name === "department" && role === "Supervisor") {
+      fetchTeamsByDepartment(value);
     }
 
     // Clear error when user starts typing
@@ -157,6 +181,7 @@ const SignUp = () => {
         job_role: role,
         employee_id: form.employeeId,
         department: form.department,
+        team: role === "Supervisor" ? form.team : undefined,
         registration_number: form.registrationNumber,
         hospital: form.hospital,
         username: form.username,
@@ -451,6 +476,54 @@ const SignUp = () => {
                   {departments.length === 0 && (
                     <p className="text-yellow-600 text-sm mt-1">
                       ⚠️ No departments loaded. You can enter your department name manually.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {role === "Supervisor" && (
+                <div>
+                  <label className="block text-[#212121] font-medium mb-2">Team <span className="text-red-500">*</span></label>
+                  {teams.length > 0 ? (
+                    <select 
+                      name="team" 
+                      required 
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                        touched.team && errors.team 
+                          ? 'border-red-500 focus:ring-red-500' 
+                          : 'border-gray-200 focus:ring-blue-500'
+                      }`}
+                    >
+                      <option value="">Select your team</option>
+                      {teams.map((team) => (
+                        <option key={team.id} value={team.name}>
+                          {team.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input 
+                      type="text" 
+                      name="team" 
+                      required 
+                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                        touched.team && errors.team 
+                          ? 'border-red-500 focus:ring-red-500' 
+                          : 'border-gray-200 focus:ring-blue-500'
+                      }`}
+                      placeholder="Enter your team name"
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                    />
+                  )}
+                  {touched.team && errors.team && (
+                    <p className="text-red-500 text-sm mt-1">{errors.team}</p>
+                  )}
+                  {departments.length === 0 && (
+                    <p className="text-yellow-600 text-sm mt-1">
+                      ⚠️ No teams loaded. You can enter your team name manually.
                     </p>
                   )}
                 </div>
