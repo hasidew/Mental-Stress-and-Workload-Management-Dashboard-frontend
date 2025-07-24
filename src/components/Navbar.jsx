@@ -18,8 +18,18 @@ const Navbar = () => {
 
     const authenticatedNavItems = [
         { path: '/dashboard', label: 'Dashboard' },
-        { path: '/stress-tracking', label: 'Stress Tracking' },
-        { path: '/stress-score', label: 'Stress Score' },
+        { path: '/task-management', label: 'Task Management' },
+        { path: '/stress-score', label: 'Stress Assessment' },
+        { path: '/ai-chat', label: 'AI Chat' },
+        { path: '/consultants', label: 'Consultants' }
+    ];
+
+    const supervisorNavItems = [
+        { path: '/dashboard', label: 'Dashboard' },
+        { path: '/supervisor/task-management', label: 'Team Tasks' },
+        { path: '/supervisor/stress-monitoring', label: 'Team Stress' },
+        { path: '/task-management', label: 'My Tasks' },
+        { path: '/stress-score', label: 'My Stress' },
         { path: '/ai-chat', label: 'AI Chat' },
         { path: '/consultants', label: 'Consultants' }
     ];
@@ -38,7 +48,7 @@ const Navbar = () => {
 
     return (
         <nav className="bg-white/90 backdrop-blur-md shadow-lg sticky top-0 z-50 border-b border-gray-100">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="w-full px-8 sm:px-12 lg:px-16 xl:px-20">
                 <div className="flex justify-between items-center h-16">
                     {/* Logo */}
                     <Link to="/" className="flex items-center space-x-3 group">
@@ -52,14 +62,16 @@ const Navbar = () => {
                     </Link>
 
                     {/* Desktop Navigation */}
-                    <div className="hidden md:flex items-center space-x-1">
+                    <div className="hidden md:flex items-center space-x-2">
                         {isAuthenticated() ? (
                             <>
-                                {(getUserRole() === 'admin' ? adminNavItems : authenticatedNavItems).map((item) => (
+                                {(getUserRole() === 'admin' ? adminNavItems : 
+                                  getUserRole() === 'supervisor' ? supervisorNavItems : 
+                                  authenticatedNavItems).map((item) => (
                                     <Link
                                         key={item.path}
                                         to={item.path}
-                                        className={`flex items-center px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                        className={`flex items-center px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                                             isActive(item.path)
                                                 ? 'bg-blue-600 text-white shadow-lg'
                                                 : 'text-[#212121] hover:bg-gray-100 hover:text-blue-600'
@@ -75,7 +87,7 @@ const Navbar = () => {
                                     <Link
                                         key={item.path}
                                         to={item.path}
-                                        className={`flex items-center px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                        className={`flex items-center px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                                             isActive(item.path)
                                                 ? 'bg-blue-600 text-white shadow-lg'
                                                 : 'text-[#212121] hover:bg-gray-100 hover:text-blue-600'
@@ -89,7 +101,7 @@ const Navbar = () => {
                     </div>
 
                     {/* Auth Buttons */}
-                    <div className="hidden md:flex items-center space-x-3">
+                    <div className="hidden md:flex items-center space-x-4">
                         {isAuthenticated() ? (
                             <>
                                 <span className="text-sm text-gray-600">
@@ -97,7 +109,7 @@ const Navbar = () => {
                                 </span>
                                 <button
                                     onClick={handleLogout}
-                                    className="text-red-600 hover:text-red-800 font-medium transition-colors px-4 py-2 rounded-xl hover:bg-red-50"
+                                    className="text-red-600 hover:text-red-800 font-medium transition-colors px-5 py-2 rounded-xl hover:bg-red-50"
                                 >
                                     Logout
                                 </button>
@@ -106,13 +118,13 @@ const Navbar = () => {
                             <>
                                 <Link
                                     to="/signin"
-                                    className="text-[#212121] hover:text-blue-600 font-medium transition-colors px-4 py-2 rounded-xl hover:bg-gray-100"
+                                    className="text-[#212121] hover:text-blue-600 font-medium transition-colors px-5 py-2 rounded-xl hover:bg-gray-100"
                                 >
                                     Sign In
                                 </Link>
                                 <Link
                                     to="/signup"
-                                    className="bg-gradient-to-r from-[#212121] to-gray-800 text-white px-4 py-2 rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105"
+                                    className="bg-gradient-to-r from-[#212121] to-gray-800 text-white px-5 py-2 rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105"
                                 >
                                     Get Started
                                 </Link>
@@ -160,7 +172,9 @@ const Navbar = () => {
                 <div className="px-2 pt-2 pb-3 space-y-1 bg-white/95 backdrop-blur-md border-t border-gray-100">
                     {isAuthenticated() ? (
                         <>
-                            {(getUserRole() === 'admin' ? adminNavItems : authenticatedNavItems).map((item) => (
+                            {(getUserRole() === 'admin' ? adminNavItems : 
+                              getUserRole() === 'supervisor' ? supervisorNavItems : 
+                              authenticatedNavItems).map((item) => (
                                 <Link
                                     key={item.path}
                                     to={item.path}

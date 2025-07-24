@@ -188,6 +188,133 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUserData = async (forceRefresh = false) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token || isTokenExpired(token)) {
+        console.log('No valid token found, skipping refresh');
+        return;
+      }
+
+      // Extract current role from token
+      const currentUserInfo = extractUserInfo(token);
+      const currentRole = currentUserInfo?.role || localStorage.getItem('user_role') || 'employee';
+      
+      console.log('Current role from token:', currentRole);
+
+      // Only proceed if forced or if we haven't refreshed recently
+      const lastRefresh = localStorage.getItem('last_role_refresh');
+      const now = Date.now();
+      const refreshCooldown = 10000; // 10 seconds cooldown
+
+      if (!forceRefresh && lastRefresh && (now - parseInt(lastRefresh)) < refreshCooldown) {
+        console.log('Skipping refresh due to cooldown');
+        return;
+      }
+
+      // Check for potential infinite loops
+      const callCount = parseInt(localStorage.getItem('refresh_call_count') || '0');
+      if (callCount > 5) {
+        console.log('Too many refresh calls detected, skipping to prevent loop');
+        localStorage.setItem('refresh_call_count', '0');
+        return { roleChanged: false, error: 'Too many refresh calls' };
+      }
+      
+      localStorage.setItem('refresh_call_count', (callCount + 1).toString());
+
+      // Try to get fresh data from server first (most reliable)
+      try {
+        console.log('Fetching fresh user data from server...');
+        
+        // Add timeout to prevent hanging requests
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
+        });
+        
+        const refreshResult = await Promise.race([
+          apiService.refreshUserData(),
+          timeoutPromise
+        ]);
+        
+        if (refreshResult.error) {
+          throw new Error(refreshResult.error);
+        }
+        
+        const freshUserData = refreshResult.userData;
+        
+        if (refreshResult.roleChanged) {
+          console.log(`Role changed from ${refreshResult.oldRole} to ${refreshResult.newRole}`);
+          
+          // Update user state with fresh data
+          setUser({ 
+            token, 
+            ...freshUserData,
+            role: refreshResult.newRole
+          });
+          localStorage.setItem('user_role', refreshResult.newRole);
+          localStorage.setItem('last_role_refresh', now.toString());
+          
+          // Reset call counter on success
+          localStorage.setItem('refresh_call_count', '0');
+          return { roleChanged: true, newRole: refreshResult.newRole, oldRole: refreshResult.oldRole };
+        } else {
+          console.log('No role change detected');
+          localStorage.setItem('last_role_refresh', now.toString());
+          // Reset call counter on success
+          localStorage.setItem('refresh_call_count', '0');
+          return { roleChanged: false, currentRole };
+        }
+      } catch (serverError) {
+        console.log('Server data fetch failed, trying token refresh:', serverError);
+        
+        // Fallback to token refresh
+        try {
+          const refreshResponse = await Promise.race([
+            apiService.refreshToken(),
+            timeoutPromise
+          ]);
+          const newToken = refreshResponse.access_token;
+          const newUserInfo = extractUserInfo(newToken);
+          
+          if (newUserInfo && newUserInfo.role) {
+            const newRole = newUserInfo.role;
+            console.log('Token refresh returned role:', newRole);
+            
+            // Only update if role actually changed
+            if (newRole !== currentRole) {
+              console.log(`Role changed from ${currentRole} to ${newRole}`);
+              
+              setUser({ 
+                token: newToken, 
+                ...newUserInfo,
+                role: newRole
+              });
+              localStorage.setItem('user_role', newRole);
+              localStorage.setItem('last_role_refresh', now.toString());
+              
+              // Reset call counter on success
+              localStorage.setItem('refresh_call_count', '0');
+              return { roleChanged: true, newRole, oldRole: currentRole };
+            } else {
+              console.log('No role change detected in token refresh');
+              localStorage.setItem('last_role_refresh', now.toString());
+              // Reset call counter on success
+              localStorage.setItem('refresh_call_count', '0');
+              return { roleChanged: false, currentRole };
+            }
+          }
+        } catch (refreshError) {
+          console.log('Token refresh also failed:', refreshError);
+          // Don't update anything, just log the error
+          return { roleChanged: false, error: refreshError.message };
+        }
+      }
+    } catch (error) {
+      console.error('Error in refreshUserData:', error);
+      return { roleChanged: false, error: error.message };
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -200,6 +327,7 @@ export const AuthProvider = ({ children }) => {
     getUserRole,
     hasRole,
     setUserRole,
+    refreshUserData,
   };
 
   return (

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import apiService from '../utils/api';
 import { useToast } from '../contexts/ToastContext';
+import { getDashboardUrl, shouldRedirectToAdmin } from '../utils/roleUtils';
 
 const Dashboard = () => {
-  const { getUserRole, setUserRole, user } = useAuth();
-  const { showError } = useToast();
+  const { getUserRole, setUserRole, user, refreshUserData } = useAuth();
+  const { showError, showSuccess } = useToast();
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [stressData, setStressData] = useState(null);
   const [workloadData, setWorkloadData] = useState(null);
@@ -14,16 +16,23 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchDashboardData = async () => {
+      // Refresh user data to ensure we have the latest role information
+      try {
+        await refreshUserData();
+      } catch (error) {
+        console.log('Could not refresh user data:', error);
+      }
+      
       try {
         setLoading(true);
         const userRole = getUserRole();
         console.log('Current user role:', userRole);
         
         // Redirect admin users to admin dashboard
-        if (userRole === 'admin') {
-          window.location.href = '/admin-dashboard';
+        if (shouldRedirectToAdmin(userRole)) {
+          navigate('/admin-dashboard');
           return;
         }
         
@@ -52,7 +61,7 @@ const Dashboard = () => {
         // Fetch stress data
         try {
           console.log(`Fetching stress data for role: ${userRole}`);
-          const stressResponse = await apiService.getStressByRole(userRole);
+          const stressResponse = await apiService.getMyStressScore();
           setStressData(stressResponse);
           console.log('Stress data fetched successfully:', stressResponse);
         } catch (stressError) {
@@ -72,13 +81,13 @@ const Dashboard = () => {
         // Generate recent activities based on available data
         const activities = [];
         
-        if (stressData && stressData.length > 0) {
+        if (stressData && !stressData.message) {
           activities.push({
             id: 1,
-            activity: 'Updated stress score',
+            activity: 'Completed stress assessment',
             time: 'Recently',
             type: 'stress',
-            score: stressData[stressData.length - 1]?.score
+            score: stressData.score
           });
         }
         
@@ -125,8 +134,8 @@ const Dashboard = () => {
   }, [getUserRole, showError]);
 
   const getStressColor = (score) => {
-    if (score < 30) return 'text-green-600 bg-green-100';
-    if (score < 60) return 'text-yellow-600 bg-yellow-100';
+    if (score <= 13) return 'text-green-600 bg-green-100';
+    if (score <= 26) return 'text-yellow-600 bg-yellow-100';
     return 'text-red-600 bg-red-100';
   };
 
@@ -213,6 +222,19 @@ const Dashboard = () => {
             >
               Set Admin
             </button>
+            <button
+              onClick={async () => {
+                try {
+                  await refreshUserData();
+                  showSuccess('User data refreshed!');
+                } catch (error) {
+                  showError('Failed to refresh user data');
+                }
+              }}
+              className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+            >
+              Refresh Data
+            </button>
             </div>
           </div>
         </div>
@@ -223,12 +245,12 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[#4F4F4F] text-sm">Current Stress Score</p>
-                {stressData && stressData.length > 0 ? (
-                  <p className={`text-2xl font-bold ${getStressColor(stressData[stressData.length - 1].score)}`}>
-                    {stressData[stressData.length - 1].score}/100
+                {stressData && !stressData.message ? (
+                  <p className={`text-2xl font-bold ${getStressColor(stressData.score)}`}>
+                    {stressData.score}/40
                   </p>
                 ) : (
-                  <p className="text-2xl font-bold text-gray-400">No data</p>
+                  <p className="text-2xl font-bold text-gray-400">No assessment</p>
                 )}
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -274,7 +296,7 @@ const Dashboard = () => {
         {getUserRole() === 'supervisor' && (
           <div className="bg-white rounded-2xl p-6 shadow-md mb-8">
             <h2 className="text-xl font-semibold text-[#212121] mb-4">Team Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-600">
                   {dashboardData?.team_members || 0}
@@ -293,6 +315,30 @@ const Dashboard = () => {
                 </p>
                 <p className="text-sm text-gray-600">Pending Reviews</p>
               </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <p className="text-2xl font-bold text-purple-600">
+                  {dashboardData?.team_tasks || 0}
+                </p>
+                <p className="text-sm text-gray-600">Team Tasks</p>
+              </div>
+            </div>
+            
+            {/* Supervisor Quick Actions */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Link
+                to="/supervisor/task-management"
+                className="flex items-center justify-center p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <span className="mr-2">📋</span>
+                Manage Team Tasks
+              </Link>
+              <Link
+                to="/supervisor/stress-monitoring"
+                className="flex items-center justify-center p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <span className="mr-2">📊</span>
+                Monitor Team Stress
+              </Link>
             </div>
           </div>
         )}
@@ -351,13 +397,23 @@ const Dashboard = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Link to="/stress-tracking" className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow">
+          <Link to="/task-management" className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-indigo-600 text-2xl">✅</span>
+              </div>
+              <h3 className="text-lg font-semibold text-[#212121] mb-2">Task Management</h3>
+              <p className="text-[#4F4F4F] text-sm">Manage daily tasks</p>
+            </div>
+          </Link>
+
+          <Link to="/stress-score" className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-blue-600 text-2xl">📝</span>
               </div>
-              <h3 className="text-lg font-semibold text-[#212121] mb-2">Log Daily Tasks</h3>
-              <p className="text-[#4F4F4F] text-sm">Track your workload</p>
+              <h3 className="text-lg font-semibold text-[#212121] mb-2">Stress Assessment</h3>
+              <p className="text-[#4F4F4F] text-sm">Calculate your stress score</p>
             </div>
           </Link>
 
@@ -366,8 +422,8 @@ const Dashboard = () => {
               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-purple-600 text-2xl">🧠</span>
               </div>
-              <h3 className="text-lg font-semibold text-[#212121] mb-2">Stress Score</h3>
-              <p className="text-[#4F4F4F] text-sm">Understand your stress</p>
+              <h3 className="text-lg font-semibold text-[#212121] mb-2">Stress Assessment</h3>
+              <p className="text-[#4F4F4F] text-sm">Complete stress assessment</p>
             </div>
           </Link>
 

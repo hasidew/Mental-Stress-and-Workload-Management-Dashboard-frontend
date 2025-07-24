@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getDashboardUrl } from '../utils/roleUtils';
 
 const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { isAuthenticated, getUserRole, loading } = useAuth();
@@ -25,14 +26,7 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
     const userRole = getUserRole();
     if (userRole !== requiredRole) {
       // Redirect to appropriate dashboard based on user role
-      const roleRoutes = {
-        employee: '/dashboard',
-        supervisor: '/dashboard',
-        psychiatrist: '/dashboard',
-        hr_manager: '/dashboard'
-      };
-      
-      const redirectPath = roleRoutes[userRole] || '/dashboard';
+      const redirectPath = getDashboardUrl(userRole);
       return <Navigate to={redirectPath} replace />;
     }
   }

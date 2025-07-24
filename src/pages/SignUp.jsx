@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import { validationRules, validateForm } from "../utils/validation";
@@ -12,6 +12,7 @@ const SignUp = () => {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -22,14 +23,30 @@ const SignUp = () => {
     jobRole: "",
     employeeId: "",
     department: "",
-    team: "",
-    address: "",
-    supervisorName: "",
     registrationNumber: "",
     hospital: "",
     username: "",
     password: "",
   });
+
+  // Fetch departments on component mount
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const apiService = (await import('../utils/api')).default;
+        console.log('Fetching departments...');
+        const departmentsData = await apiService.getAllDepartments();
+        console.log('Departments fetched:', departmentsData);
+        setDepartments(departmentsData);
+      } catch (error) {
+        console.error('Failed to fetch departments:', error);
+        // Don't show error to user, just log it and continue with empty departments
+        // This allows the form to work even if departments can't be loaded
+      }
+    };
+
+    fetchDepartments();
+  }, []);
 
   // Dynamic validation schema based on selected role
   const getValidationSchema = () => {
@@ -55,16 +72,6 @@ const SignUp = () => {
 
     if (role === "Employee" || role === "Supervisor") {
       baseSchema.department = [(value) => validationRules.required(value, 'Department')];
-      baseSchema.team = [(value) => validationRules.required(value, 'Team')];
-    }
-
-    if (role === "Employee") {
-      baseSchema.address = [(value) => validationRules.required(value, 'Address')];
-      // Supervisor name is optional for employees
-      baseSchema.supervisorName = [(value) => {
-        if (!value || value.trim() === '') return null; // Optional field
-        return validationRules.name(value, 'Supervisor Name');
-      }];
     }
 
     if (role === "Consultant") {
@@ -139,21 +146,34 @@ const SignUp = () => {
     try {
       setIsLoading(true);
       
-      // Map form data to API format
-      const userData = {
+      // Map form data to registration request format
+      const requestData = {
+        first_name: form.firstName,
+        last_name: form.lastName,
+        gender: form.gender,
+        nic: form.nic,
+        birthday: new Date(form.birthday),
+        contact: form.contact,
+        job_role: role,
+        employee_id: form.employeeId,
+        department: form.department,
+        registration_number: form.registrationNumber,
+        hospital: form.hospital,
         username: form.username,
         email: form.username, // Using username as email for now
-        password: form.password,
-        role: role.toLowerCase().replace(' ', '_') // Convert role to API format
+        password: form.password
       };
       
-      console.log('Registering with role:', userData.role);
+      console.log('Submitting registration request with role:', role);
       
-      await register(userData);
-      showSuccess("Account created successfully! Welcome to MindCare.");
-      navigate('/dashboard');
+      // Import apiService
+      const apiService = (await import('../utils/api')).default;
+      await apiService.submitRegistrationRequest(requestData);
+      
+      showSuccess("Registration request submitted successfully! Please wait for admin approval. You will be notified once your account is approved.");
+      navigate('/signin');
     } catch (error) {
-      showError(error.message || "Registration failed. Please try again.");
+      showError(error.message || "Registration request failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -389,9 +409,28 @@ const SignUp = () => {
               )}
 
               {(role === "Employee" || role === "Supervisor") && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[#212121] font-medium mb-2">Department *</label>
+                <div>
+                  <label className="block text-[#212121] font-medium mb-2">Department *</label>
+                  {departments.length > 0 ? (
+                    <select 
+                      name="department" 
+                      required 
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                        touched.department && errors.department 
+                          ? 'border-red-500 focus:ring-red-500' 
+                          : 'border-gray-200 focus:ring-blue-500'
+                      }`}
+                    >
+                      <option value="">Select your department</option>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.name}>
+                          {dept.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
                     <input 
                       type="text" 
                       name="department" 
@@ -405,71 +444,15 @@ const SignUp = () => {
                       onChange={handleChange}
                       onBlur={handleBlur}
                     />
-                    {touched.department && errors.department && (
-                      <p className="text-red-500 text-sm mt-1">{errors.department}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-[#212121] font-medium mb-2">Team *</label>
-                    <input 
-                      type="text" 
-                      name="team" 
-                      required 
-                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                        touched.team && errors.team 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-200 focus:ring-blue-500'
-                      }`}
-                      placeholder="Enter your team"
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.team && errors.team && (
-                      <p className="text-red-500 text-sm mt-1">{errors.team}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {role === "Employee" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[#212121] font-medium mb-2">Address *</label>
-                    <input 
-                      type="text" 
-                      name="address" 
-                      required 
-                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                        touched.address && errors.address 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-200 focus:ring-blue-500'
-                      }`}
-                      placeholder="Enter your address"
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.address && errors.address && (
-                      <p className="text-red-500 text-sm mt-1">{errors.address}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-[#212121] font-medium mb-2">Supervisor Name</label>
-                    <input 
-                      type="text" 
-                      name="supervisorName" 
-                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                        touched.supervisorName && errors.supervisorName 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-200 focus:ring-blue-500'
-                      }`}
-                      placeholder="Enter supervisor name"
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.supervisorName && errors.supervisorName && (
-                      <p className="text-red-500 text-sm mt-1">{errors.supervisorName}</p>
-                    )}
-                  </div>
+                  )}
+                  {touched.department && errors.department && (
+                    <p className="text-red-500 text-sm mt-1">{errors.department}</p>
+                  )}
+                  {departments.length === 0 && (
+                    <p className="text-yellow-600 text-sm mt-1">
+                      ⚠️ No departments loaded. You can enter your department name manually.
+                    </p>
+                  )}
                 </div>
               )}
 

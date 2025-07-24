@@ -92,11 +92,11 @@ export const validationRules = {
 };
 
 // Form validation function
-export const validateForm = (values, validationSchema) => {
+export function validateForm(values, rules) {
   const errors = {};
-  
-  Object.keys(validationSchema).forEach(field => {
-    const fieldRules = validationSchema[field];
+  if (!rules) return errors;
+  Object.keys(rules).forEach(field => {
+    const fieldRules = rules[field];
     const value = values[field];
     
     for (const rule of fieldRules) {

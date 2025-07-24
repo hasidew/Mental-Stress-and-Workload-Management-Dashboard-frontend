@@ -1,83 +1,139 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import apiService from '../utils/api';
 
 const StressScore = () => {
+  const { user } = useAuth();
   const { showSuccess, showError } = useToast();
-  const [tasks, setTasks] = useState(() => {
-    const savedTasks = localStorage.getItem('stressScoreTasks');
-    return savedTasks ? JSON.parse(savedTasks) : [];
-  })
-  const [newTask, setNewTask] = useState('')
-  const [stressScore, setStressScore] = useState(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState({});
+  const [currentScore, setCurrentScore] = useState(null);
+  const [sharingPreferences, setSharingPreferences] = useState({
+    share_with_supervisor: false,
+    share_with_hr: false
+  });
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [showSharingModal, setShowSharingModal] = useState(false);
 
-  const addTask = () => {
-    if (newTask.trim()) {
-      const newTasks = [...tasks, { id: Date.now(), text: newTask, completed: false }];
-      setTasks(newTasks);
-      localStorage.setItem('stressScoreTasks', JSON.stringify(newTasks));
-      setNewTask('')
-      showSuccess('Task added successfully!');
-    } else {
-      showError('Please enter a task description');
+  // Check if user is a supervisor
+  const isSupervisor = user?.role === 'supervisor';
+
+  useEffect(() => {
+    fetchQuestions();
+    fetchCurrentScore();
+  }, []);
+
+  const fetchQuestions = async () => {
+    try {
+      const data = await apiService.getStressQuestions();
+      setQuestions(data.questions);
+    } catch (error) {
+      showError('Failed to load stress assessment questions');
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  const toggleTask = (id) => {
-    const updatedTasks = tasks.map(task => 
-      task.id === id ? { ...task, completed: !task.completed } : task
-    );
-    setTasks(updatedTasks);
-    localStorage.setItem('stressScoreTasks', JSON.stringify(updatedTasks));
-  }
-
-  const removeTask = (id) => {
-    const taskToRemove = tasks.find(task => task.id === id);
-    const updatedTasks = tasks.filter(task => task.id !== id);
-    setTasks(updatedTasks);
-    localStorage.setItem('stressScoreTasks', JSON.stringify(updatedTasks));
-    showSuccess(`Removed task: "${taskToRemove.text}"`);
-  }
-
-  const calculateStressScore = () => {
-    if (tasks.length === 0) {
-      showError('Please add some tasks first');
-      return;
+  const fetchCurrentScore = async () => {
+    try {
+      const data = await apiService.getMyStressScore();
+      if (data.message) {
+        setCurrentScore(null);
+      } else {
+        setCurrentScore(data);
+        setSharingPreferences({
+          share_with_supervisor: data.share_with_supervisor,
+          share_with_hr: data.share_with_hr
+        });
+      }
+    } catch (error) {
+      console.log('No existing stress score found');
     }
-    
-    const completedTasks = tasks.filter(task => task.completed).length
-    const totalTasks = tasks.length
-    const completionRate = (completedTasks / totalTasks) * 100
-    
-    // Simple stress score calculation
-    let score = 0
-    if (completionRate >= 80) score = Math.floor(Math.random() * 2) + 1 // 1-2
-    else if (completionRate >= 60) score = Math.floor(Math.random() * 2) + 3 // 3-4
-    else if (completionRate >= 40) score = Math.floor(Math.random() * 2) + 5 // 5-6
-    else if (completionRate >= 20) score = Math.floor(Math.random() * 2) + 7 // 7-8
-    else score = Math.floor(Math.random() * 2) + 9 // 9-10
-    
-    setStressScore(score)
-    showSuccess(`Stress score calculated: ${score}/10`);
-  }
+  };
 
-  const submitStressScore = async () => {
-    if (stressScore === null) {
-      showError('Please calculate your stress score first');
-      return;
+  const handleAnswerChange = (questionIndex, value) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionIndex]: parseInt(value)
+    }));
+  };
+
+  const handleSubmitAssessment = async () => {
+    // Check if all questions are answered
+    const answerArray = [];
+    for (let i = 0; i < questions.length; i++) {
+      if (!answers[i]) {
+        showError('Please answer all questions');
+        return;
+      }
+      answerArray.push(answers[i]);
     }
 
     try {
-      setIsSubmitting(true);
-      await apiService.submitStressScore({ score: stressScore });
-      showSuccess('Stress score submitted successfully!');
+      setSubmitting(true);
+      const result = await apiService.submitStressAssessment({
+        answers: answerArray,
+        share_with_supervisor: sharingPreferences.share_with_supervisor,
+        share_with_hr: sharingPreferences.share_with_hr
+      });
+      
+      showSuccess(result.message);
+      setCurrentScore({
+        score: result.score,
+        level: result.level,
+        share_with_supervisor: sharingPreferences.share_with_supervisor,
+        share_with_hr: sharingPreferences.share_with_hr
+      });
+      
+      // Reset form
+      setAnswers({});
     } catch (error) {
-      showError('Failed to submit stress score. Please try again.');
+      showError(error.message || 'Failed to submit assessment');
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
+  };
+
+  const handleUpdateSharing = async () => {
+    try {
+      await apiService.updateStressSharing(sharingPreferences);
+      showSuccess('Sharing preferences updated successfully!');
+      setShowSharingModal(false);
+      
+      // Refresh the current score data from server
+      await fetchCurrentScore();
+    } catch (error) {
+      showError('Failed to update sharing preferences');
+    }
+  };
+
+  const getStressLevelColor = (level) => {
+    switch (level) {
+      case 'low': return 'text-green-600 bg-green-100';
+      case 'medium': return 'text-yellow-600 bg-yellow-100';
+      case 'high': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getStressLevelDescription = (level) => {
+    switch (level) {
+      case 'low': return 'You are managing stress well. Keep up the good work!';
+      case 'medium': return 'You are experiencing moderate stress. Consider stress management techniques.';
+      case 'high': return 'You are experiencing high stress levels. Consider seeking support or professional help.';
+      default: return '';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-[#EDF4FA] min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   return (
@@ -86,185 +142,208 @@ const StressScore = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-[#212121]">Stress Score Analysis</h1>
+            <h1 className="text-3xl font-bold text-[#212121]">Stress Assessment</h1>
             <Link to="/dashboard" className="text-[#212121] hover:text-blue-600">
               ← Back to Dashboard
             </Link>
           </div>
-          <p className="text-[#4F4F4F]">Understand your stress patterns and get personalized recommendations</p>
+          <p className="text-[#4F4F4F]">Complete the assessment to understand your stress levels and get personalized insights</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Task Management */}
-          <div className="bg-white rounded-2xl p-6 shadow-md">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-[#212121]">Add Your Daily Tasks</h2>
-              <span className="text-sm text-gray-500">
-                {tasks.length} task{tasks.length !== 1 ? 's' : ''} • {tasks.filter(t => t.completed).length} completed
-              </span>
-            </div>
-            
-            <div className="flex gap-2 mb-6">
-              <input
-                type="text"
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                placeholder="Enter a task..."
-                className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                onKeyPress={(e) => e.key === 'Enter' && addTask()}
-              />
-              <button
-                onClick={addTask}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105"
-              >
-                Add
-              </button>
-            </div>
-
-            {tasks.length > 0 && (
-              <div className="mb-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-2">
-                  <span>Progress</span>
-                  <span>{tasks.filter(t => t.completed).length}/{tasks.length} completed</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(tasks.filter(t => t.completed).length / tasks.length) * 100}%` }}
-                  ></div>
-                </div>
+          {/* Current Score Display */}
+          {currentScore && (
+            <div className="bg-white rounded-2xl p-6 shadow-md">
+              <h2 className="text-xl font-semibold text-[#212121] mb-4">Your Current Stress Score</h2>
+              <div className="text-center mb-6">
+                <div className="text-4xl font-bold text-blue-600 mb-2">{currentScore.score}/40</div>
+                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStressLevelColor(currentScore.level)}`}>
+                  {currentScore.level.toUpperCase()} STRESS
+                </span>
               </div>
-            )}
-            
-            <div className="space-y-3">
-              {tasks.map((task) => (
-                <div key={task.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={() => toggleTask(task.id)}
-                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className={task.completed ? 'line-through text-gray-500' : 'text-[#212121]'}>
-                      {task.text}
+              <p className="text-[#4F4F4F] mb-4 text-center">
+                {getStressLevelDescription(currentScore.level)}
+              </p>
+              
+              <div className="space-y-3 mb-6">
+                {!isSupervisor && (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-600">Share with Supervisor</span>
+                    <span className={`text-sm ${currentScore.share_with_supervisor ? 'text-green-600' : 'text-gray-400'}`}>
+                      {currentScore.share_with_supervisor ? '✓ Shared' : '✗ Private'}
                     </span>
                   </div>
-                  <button
-                    onClick={() => removeTask(task.id)}
-                    className="text-red-500 hover:text-red-700 transition-colors px-2 py-1 rounded hover:bg-red-50"
-                  >
-                    Remove
-                  </button>
+                )}
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-600">Share with HR</span>
+                  <span className={`text-sm ${currentScore.share_with_hr ? 'text-green-600' : 'text-gray-400'}`}>
+                    {currentScore.share_with_hr ? '✓ Shared' : '✗ Private'}
+                  </span>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => {
+                  // Update sharing preferences state to match current score
+                  setSharingPreferences({
+                    share_with_supervisor: currentScore.share_with_supervisor,
+                    share_with_hr: currentScore.share_with_hr
+                  });
+                  setShowSharingModal(true);
+                }}
+                className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-colors"
+              >
+                Update Sharing Preferences
+              </button>
+            </div>
+          )}
+
+          {/* Assessment Form */}
+          <div className="bg-white rounded-2xl p-6 shadow-md">
+            <h2 className="text-xl font-semibold text-[#212121] mb-4">
+              {currentScore ? 'Retake Assessment' : 'Stress Assessment'}
+            </h2>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Rate how often you have felt or thought a certain way in the last month:
+              </p>
+              <div className="grid grid-cols-5 gap-2 text-xs text-center">
+                <div className="p-2 bg-gray-100 rounded">1 = Never</div>
+                <div className="p-2 bg-gray-100 rounded">2 = Almost Never</div>
+                <div className="p-2 bg-gray-100 rounded">3 = Sometimes</div>
+                <div className="p-2 bg-gray-100 rounded">4 = Fairly Often</div>
+                <div className="p-2 bg-gray-100 rounded">5 = Very Often</div>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              {questions.map((question, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-[#212121] mb-3">{question}</p>
+                  <div className="flex justify-between">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <label key={value} className="flex flex-col items-center">
+                        <input
+                          type="radio"
+                          name={`question-${index}`}
+                          value={value}
+                          checked={answers[index] === value}
+                          onChange={(e) => handleAnswerChange(index, e.target.value)}
+                          className="sr-only"
+                        />
+                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-colors ${
+                          answers[index] === value
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                        }`}>
+                          {value}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               ))}
-              {tasks.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-[#4F4F4F] mb-2">No tasks added yet</p>
-                  <p className="text-sm text-gray-400">Add some tasks to calculate your stress score</p>
-                </div>
-              )}
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={calculateStressScore}
-                disabled={tasks.length === 0}
-                className="flex-1 bg-gradient-to-r from-[#212121] to-gray-800 text-white py-3 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                Calculate Stress Score
-              </button>
-              {tasks.length > 0 && (
-                <button
-                  onClick={() => {
-                    setTasks([]);
-                    setStressScore(null);
-                    localStorage.removeItem('stressScoreTasks');
-                    showSuccess('All tasks cleared!');
-                  }}
-                  className="px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
-                >
-                  Clear All
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Results */}
-          <div className="space-y-6">
-            {stressScore !== null && (
-              <div className="bg-white rounded-2xl p-6 shadow-md">
-                <h3 className="text-xl font-semibold text-[#212121] mb-4">Your Stress Score</h3>
-                <div className="text-center mb-6">
-                  <div className="text-4xl font-bold text-blue-600 mb-2">{stressScore}/10</div>
-                  <p className="text-[#4F4F4F]">
-                    {stressScore <= 2 && "Low stress level - Great job managing your workload!"}
-                    {stressScore >= 3 && stressScore <= 4 && "Moderate stress - Consider taking more breaks."}
-                    {stressScore >= 5 && stressScore <= 6 && "High stress - Try to prioritize tasks better."}
-                    {stressScore >= 7 && stressScore <= 8 && "Very high stress - Consider seeking support."}
-                    {stressScore >= 9 && "Critical stress level - Please reach out for help immediately."}
-                  </p>
-                </div>
-                <button
-                  onClick={submitStressScore}
-                  disabled={isSubmitting}
-                  className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      Submitting...
-                    </div>
-                  ) : (
-                    'Submit Stress Score'
-                  )}
-                </button>
-              </div>
-            )}
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-2xl p-6 shadow-md">
-              <h3 className="text-lg font-semibold text-[#212121] mb-4">Quick Actions</h3>
+            {/* Sharing Preferences */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-[#212121] mb-3">Sharing Preferences</h3>
               <div className="space-y-3">
-                <Link to="/stress-tracking" className="block w-full bg-blue-600 text-white py-3 px-4 rounded-xl text-center hover:bg-blue-700 transition-colors">
-                  Log Today's Activities
-                </Link>
-                <Link to="/ai-chat" className="block w-full bg-green-600 text-white py-3 px-4 rounded-xl text-center hover:bg-green-700 transition-colors">
-                  Chat with AI Assistant
-                </Link>
-                <Link to="/consultants" className="block w-full bg-orange-600 text-white py-3 px-4 rounded-xl text-center hover:bg-orange-700 transition-colors">
-                  Contact Consultant
-                </Link>
+                {!isSupervisor && (
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={sharingPreferences.share_with_supervisor}
+                      onChange={(e) => setSharingPreferences(prev => ({
+                        ...prev,
+                        share_with_supervisor: e.target.checked
+                      }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Share my stress score with my supervisor</span>
+                  </label>
+                )}
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={sharingPreferences.share_with_hr}
+                    onChange={(e) => setSharingPreferences(prev => ({
+                      ...prev,
+                      share_with_hr: e.target.checked
+                    }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Share my stress score with HR</span>
+                </label>
               </div>
             </div>
 
-            {/* Stress Management Tips */}
-            <div className="bg-white rounded-2xl p-6 shadow-md">
-              <h3 className="text-lg font-semibold text-[#212121] mb-4">Stress Management Tips</h3>
-              <div className="space-y-3 text-sm text-[#4F4F4F]">
-                <div className="flex items-start space-x-2">
-                  <span className="text-green-600">•</span>
-                  <p>Practice deep breathing for 5 minutes daily</p>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="text-green-600">•</span>
-                  <p>Take a 10-minute walk during lunch breaks</p>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="text-green-600">•</span>
-                  <p>Set boundaries between work and personal time</p>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="text-green-600">•</span>
-                  <p>Stay hydrated and maintain regular meal times</p>
-                </div>
-              </div>
-            </div>
+            <button
+              onClick={handleSubmitAssessment}
+              disabled={submitting || Object.keys(answers).length < questions.length}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Submitting...' : currentScore ? 'Update Assessment' : 'Submit Assessment'}
+            </button>
           </div>
         </div>
+
+        {/* Sharing Preferences Modal */}
+        {showSharingModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+              <h2 className="text-xl font-semibold text-[#212121] mb-4">Update Sharing Preferences</h2>
+              
+              <div className="space-y-4 mb-6">
+                {!isSupervisor && (
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={sharingPreferences.share_with_supervisor}
+                      onChange={(e) => setSharingPreferences(prev => ({
+                        ...prev,
+                        share_with_supervisor: e.target.checked
+                      }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Share with supervisor</span>
+                  </label>
+                )}
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={sharingPreferences.share_with_hr}
+                    onChange={(e) => setSharingPreferences(prev => ({
+                      ...prev,
+                      share_with_hr: e.target.checked
+                    }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Share with HR</span>
+                </label>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleUpdateSharing}
+                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
+                >
+                  Update
+                </button>
+                <button
+                  onClick={() => setShowSharingModal(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default StressScore 
+export default StressScore; 
