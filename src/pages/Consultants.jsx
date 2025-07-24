@@ -363,7 +363,7 @@ const BookingModal = ({ consultant, onClose, onSubmit, bookingData, setBookingDa
         
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Date *</label>
+            <label className="block text-[#212121] font-medium mb-2">Date <span className="text-red-500">*</span></label>
             <input
               type="date"
               name="booking_date"
@@ -376,7 +376,7 @@ const BookingModal = ({ consultant, onClose, onSubmit, bookingData, setBookingDa
           </div>
           
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Time *</label>
+            <label className="block text-[#212121] font-medium mb-2">Time <span className="text-red-500">*</span></label>
             <input
               type="time"
               name="booking_time"
@@ -457,7 +457,7 @@ const EditBookingModal = ({ booking, onClose, onSubmit, bookingData, setBookingD
         
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Date *</label>
+            <label className="block text-[#212121] font-medium mb-2">Date <span className="text-red-500">*</span></label>
             <input
               type="date"
               name="booking_date"
@@ -470,7 +470,7 @@ const EditBookingModal = ({ booking, onClose, onSubmit, bookingData, setBookingD
           </div>
           
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Time *</label>
+            <label className="block text-[#212121] font-medium mb-2">Time <span className="text-red-500">*</span></label>
             <input
               type="time"
               name="booking_time"

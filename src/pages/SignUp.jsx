@@ -212,7 +212,7 @@ const SignUp = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[#212121] font-medium mb-2">First Name *</label>
+                  <label className="block text-[#212121] font-medium mb-2">First Name <span className="text-red-500">*</span></label>
                   <input 
                     type="text" 
                     name="firstName" 
@@ -231,7 +231,7 @@ const SignUp = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-[#212121] font-medium mb-2">Last Name *</label>
+                  <label className="block text-[#212121] font-medium mb-2">Last Name <span className="text-red-500">*</span></label>
                   <input 
                     type="text" 
                     name="lastName" 
@@ -250,7 +250,7 @@ const SignUp = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-[#212121] font-medium mb-2">Gender *</label>
+                  <label className="block text-[#212121] font-medium mb-2">Gender <span className="text-red-500">*</span></label>
                   <div className="flex space-x-4">
                     <label className="flex items-center space-x-2">
                       <input 
@@ -294,7 +294,7 @@ const SignUp = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-[#212121] font-medium mb-2">NIC Number *</label>
+                  <label className="block text-[#212121] font-medium mb-2">NIC Number <span className="text-red-500">*</span></label>
                   <input 
                     type="text" 
                     name="nic" 
@@ -314,7 +314,7 @@ const SignUp = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-[#212121] font-medium mb-2">Birthday *</label>
+                  <label className="block text-[#212121] font-medium mb-2">Birthday <span className="text-red-500">*</span></label>
                   <input 
                     type="date" 
                     name="birthday" 
@@ -360,7 +360,7 @@ const SignUp = () => {
                 Professional Information
               </h3>
               <div className="mb-4">
-                <label className="block text-[#212121] font-medium mb-2">Job Role *</label>
+                <label className="block text-[#212121] font-medium mb-2">Job Role <span className="text-red-500">*</span></label>
                 <select 
                   name="jobRole" 
                   required 
@@ -387,7 +387,7 @@ const SignUp = () => {
               {(role === "Employee" || role === "Supervisor" || role === "HR Manager") && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[#212121] font-medium mb-2">Employee ID *</label>
+                    <label className="block text-[#212121] font-medium mb-2">Employee ID <span className="text-red-500">*</span></label>
                     <input 
                       type="text" 
                       name="employeeId" 
@@ -410,7 +410,7 @@ const SignUp = () => {
 
               {(role === "Employee" || role === "Supervisor") && (
                 <div>
-                  <label className="block text-[#212121] font-medium mb-2">Department *</label>
+                  <label className="block text-[#212121] font-medium mb-2">Department <span className="text-red-500">*</span></label>
                   {departments.length > 0 ? (
                     <select 
                       name="department" 
@@ -459,7 +459,7 @@ const SignUp = () => {
               {role === "Consultant" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[#212121] font-medium mb-2">Registration Number *</label>
+                    <label className="block text-[#212121] font-medium mb-2">Registration Number <span className="text-red-500">*</span></label>
                     <input 
                       type="text" 
                       name="registrationNumber" 
@@ -478,7 +478,7 @@ const SignUp = () => {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[#212121] font-medium mb-2">Hospital *</label>
+                    <label className="block text-[#212121] font-medium mb-2">Hospital <span className="text-red-500">*</span></label>
                     <input 
                       type="text" 
                       name="hospital" 
@@ -508,7 +508,7 @@ const SignUp = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[#212121] font-medium mb-2">Email Address *</label>
+                  <label className="block text-[#212121] font-medium mb-2">Email Address <span className="text-red-500">*</span></label>
                   <input 
                     type="email" 
                     name="username" 
@@ -527,7 +527,7 @@ const SignUp = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-[#212121] font-medium mb-2">Password *</label>
+                  <label className="block text-[#212121] font-medium mb-2">Password <span className="text-red-500">*</span></label>
                   <input 
                     type="password" 
                     name="password" 

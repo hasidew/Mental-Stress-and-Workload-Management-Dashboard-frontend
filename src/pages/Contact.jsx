@@ -119,7 +119,7 @@ const Contact = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[#212121] mb-1">Name *</label>
+                  <label className="block text-[#212121] mb-1">Name <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     name="name"
@@ -139,7 +139,7 @@ const Contact = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-[#212121] mb-1">Email *</label>
+                  <label className="block text-[#212121] mb-1">Email <span className="text-red-500">*</span></label>
                   <input
                     type="email"
                     name="email"
@@ -161,7 +161,7 @@ const Contact = () => {
               </div>
               
               <div>
-                <label className="block text-[#212121] mb-1">Subject *</label>
+                <label className="block text-[#212121] mb-1">Subject <span className="text-red-500">*</span></label>
                 <select
                   name="subject"
                   value={form.subject}
@@ -188,7 +188,7 @@ const Contact = () => {
               </div>
 
               <div>
-                <label className="block text-[#212121] mb-1">Message *</label>
+                <label className="block text-[#212121] mb-1">Message <span className="text-red-500">*</span></label>
                 <textarea
                   name="message"
                   value={form.message}

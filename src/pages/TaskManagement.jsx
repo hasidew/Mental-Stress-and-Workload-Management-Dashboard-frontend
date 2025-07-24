@@ -334,7 +334,7 @@ const CreateTaskModal = ({ onClose, onSubmit, formData, setFormData }) => {
         
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Task Title *</label>
+            <label className="block text-[#212121] font-medium mb-2">Task Title <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="title"
@@ -421,7 +421,7 @@ const EditTaskModal = ({ onClose, onSubmit, formData, setFormData, task }) => {
         
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Task Title *</label>
+            <label className="block text-[#212121] font-medium mb-2">Task Title <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="title"

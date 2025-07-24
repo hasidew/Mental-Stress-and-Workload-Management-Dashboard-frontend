@@ -279,7 +279,7 @@ const CreateTaskModal = ({ onClose, onSubmit, formData, setFormData, teamMembers
         
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Task Title *</label>
+            <label className="block text-[#212121] font-medium mb-2">Task Title <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="title"
@@ -304,7 +304,7 @@ const CreateTaskModal = ({ onClose, onSubmit, formData, setFormData, teamMembers
           </div>
           
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Assign to Employee *</label>
+            <label className="block text-[#212121] font-medium mb-2">Assign to Employee <span className="text-red-500">*</span></label>
             <select
               name="employee_id"
               value={formData.employee_id}
@@ -384,7 +384,7 @@ const EditTaskModal = ({ onClose, onSubmit, formData, setFormData, task, teamMem
         
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Task Title *</label>
+            <label className="block text-[#212121] font-medium mb-2">Task Title <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="title"

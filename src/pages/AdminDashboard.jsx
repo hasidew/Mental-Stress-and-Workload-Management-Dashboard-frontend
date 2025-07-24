@@ -1190,7 +1190,7 @@ const CreateUserModal = ({ onClose, onSubmit, departments, teams }) => {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Name *</label>
+            <label className="block text-[#212121] font-medium mb-2">Name <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="name"
@@ -1209,7 +1209,7 @@ const CreateUserModal = ({ onClose, onSubmit, departments, teams }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Username/Email *</label>
+            <label className="block text-[#212121] font-medium mb-2">Username/Email <span className="text-red-500">*</span></label>
             <input
               type="email"
               name="username"
@@ -1228,7 +1228,7 @@ const CreateUserModal = ({ onClose, onSubmit, departments, teams }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Email *</label>
+            <label className="block text-[#212121] font-medium mb-2">Email <span className="text-red-500">*</span></label>
             <input
               type="email"
               name="email"
@@ -1247,7 +1247,7 @@ const CreateUserModal = ({ onClose, onSubmit, departments, teams }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Password *</label>
+            <label className="block text-[#212121] font-medium mb-2">Password <span className="text-red-500">*</span></label>
             <input
               type="password"
               name="password"
@@ -1266,7 +1266,7 @@ const CreateUserModal = ({ onClose, onSubmit, departments, teams }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Age *</label>
+            <label className="block text-[#212121] font-medium mb-2">Age <span className="text-red-500">*</span></label>
             <input
               type="number"
               name="age"
@@ -1287,7 +1287,7 @@ const CreateUserModal = ({ onClose, onSubmit, departments, teams }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Sex *</label>
+            <label className="block text-[#212121] font-medium mb-2">Sex <span className="text-red-500">*</span></label>
             <select
               name="sex"
               value={formData.sex}
@@ -1441,7 +1441,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Email *</label>
+            <label className="block text-[#212121] font-medium mb-2">Email <span className="text-red-500">*</span></label>
             <input
               type="email"
               name="email"
@@ -1460,7 +1460,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Password *</label>
+            <label className="block text-[#212121] font-medium mb-2">Password <span className="text-red-500">*</span></label>
             <input
               type="password"
               name="password"
@@ -1479,7 +1479,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Registration Number *</label>
+            <label className="block text-[#212121] font-medium mb-2">Registration Number <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="registration_number"
@@ -1498,7 +1498,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Hospital *</label>
+            <label className="block text-[#212121] font-medium mb-2">Hospital <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="hospital"
@@ -1517,7 +1517,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Specialization *</label>
+            <label className="block text-[#212121] font-medium mb-2">Specialization <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="specialization"
