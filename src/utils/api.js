@@ -256,6 +256,40 @@ class ApiService {
     return await this.request('/dashboard/hr');
   }
 
+  // HR-specific endpoints
+  async getHrWorkloads() {
+    return await this.request('/dashboard/hr/workloads');
+  }
+
+  async addHrWorkload(workloadData) {
+    return await this.request('/dashboard/hr/workload', {
+      method: 'POST',
+      body: JSON.stringify(workloadData),
+    });
+  }
+
+  async getHrMyWorkloads() {
+    return await this.request('/dashboard/hr/my-workloads');
+  }
+
+  async hrBookConsultant(bookingData) {
+    return await this.request('/dashboard/hr/book-consultant', {
+      method: 'POST',
+      body: JSON.stringify(bookingData),
+    });
+  }
+
+  async getHrMyBookings() {
+    return await this.request('/dashboard/hr/my-bookings');
+  }
+
+  async hrBookForEmployee(employeeId, bookingData) {
+    return await this.request('/dashboard/hr/book-for-employee', {
+      method: 'POST',
+      body: JSON.stringify({ ...bookingData, employee_id: employeeId }),
+    });
+  }
+
   async getAdminDashboard() {
     return await this.request('/admin/dashboard');
   }

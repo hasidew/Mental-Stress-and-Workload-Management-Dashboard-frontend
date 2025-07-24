@@ -20,6 +20,7 @@ const StressScore = () => {
 
   // Check if user is a supervisor
   const isSupervisor = user?.role === 'supervisor';
+  const isHr = user?.role === 'hr_manager';
 
   useEffect(() => {
     fetchQuestions();
@@ -247,37 +248,39 @@ const StressScore = () => {
             </div>
 
             {/* Sharing Preferences */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-[#212121] mb-3">Sharing Preferences</h3>
-              <div className="space-y-3">
-                {!isSupervisor && (
+            {!isHr && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-[#212121] mb-3">Sharing Preferences</h3>
+                <div className="space-y-3">
+                  {!isSupervisor && (
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={sharingPreferences.share_with_supervisor}
+                        onChange={(e) => setSharingPreferences(prev => ({
+                          ...prev,
+                          share_with_supervisor: e.target.checked
+                        }))}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Share my stress score with my supervisor</span>
+                    </label>
+                  )}
                   <label className="flex items-center">
                     <input
                       type="checkbox"
-                      checked={sharingPreferences.share_with_supervisor}
+                      checked={sharingPreferences.share_with_hr}
                       onChange={(e) => setSharingPreferences(prev => ({
                         ...prev,
-                        share_with_supervisor: e.target.checked
+                        share_with_hr: e.target.checked
                       }))}
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="ml-2 text-sm text-gray-700">Share my stress score with my supervisor</span>
+                    <span className="ml-2 text-sm text-gray-700">Share my stress score with HR</span>
                   </label>
-                )}
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={sharingPreferences.share_with_hr}
-                    onChange={(e) => setSharingPreferences(prev => ({
-                      ...prev,
-                      share_with_hr: e.target.checked
-                    }))}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Share my stress score with HR</span>
-                </label>
+                </div>
               </div>
-            </div>
+            )}
 
             <button
               onClick={handleSubmitAssessment}
@@ -290,7 +293,7 @@ const StressScore = () => {
         </div>
 
         {/* Sharing Preferences Modal */}
-        {showSharingModal && (
+        {showSharingModal && !isHr && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-2xl p-6 w-full max-w-md">
               <h2 className="text-xl font-semibold text-[#212121] mb-4">Update Sharing Preferences</h2>

@@ -177,13 +177,13 @@ const SignUp = () => {
         gender: form.gender,
         nic: form.nic,
         birthday: new Date(form.birthday),
-        contact: form.contact,
+        contact: form.contact || undefined,
         job_role: role,
         employee_id: form.employeeId,
         department: form.department,
-        team: role === "Supervisor" ? form.team : undefined,
-        registration_number: form.registrationNumber,
-        hospital: form.hospital,
+        team: role === "Supervisor" ? (form.team || undefined) : undefined,
+        registration_number: form.registrationNumber || undefined,
+        hospital: form.hospital || undefined,
         username: form.username,
         email: form.username, // Using username as email for now
         password: form.password

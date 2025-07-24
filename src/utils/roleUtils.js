@@ -3,8 +3,9 @@ export const getDashboardUrl = (role) => {
   switch (role) {
     case 'admin':
       return '/admin-dashboard';
-    case 'supervisor':
     case 'hr_manager':
+      return '/hr-dashboard';
+    case 'supervisor':
     case 'psychiatrist':
     case 'employee':
     default:
@@ -42,6 +43,7 @@ export const getRoleBasedUrls = (role) => {
     case 'hr_manager':
       return {
         ...baseUrls,
+        hrDashboard: '/hr-dashboard',
         teamBookings: '/consultant/team-bookings',
         teamStressScores: '/stress/team-scores',
       };

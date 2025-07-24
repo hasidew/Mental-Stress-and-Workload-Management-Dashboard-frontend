@@ -17,121 +17,151 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
 
     useEffect(() => {
-    const fetchDashboardData = async () => {
-      // Refresh user data to ensure we have the latest role information
-      try {
-        await refreshUserData();
-      } catch (error) {
-        console.log('Could not refresh user data:', error);
-      }
-      
-      try {
-        setLoading(true);
-        const userRole = getUserRole();
-        console.log('Current user role:', userRole);
-        
-        // Redirect admin users to admin dashboard
-        if (shouldRedirectToAdmin(userRole)) {
-          navigate('/admin-dashboard');
-          return;
-        }
-        
-        // Fetch main dashboard data
-        let data;
-        switch (userRole) {
-          case 'employee':
-            data = await apiService.getEmployeeDashboard();
-            break;
-          case 'supervisor':
-            data = await apiService.getSupervisorDashboard();
-            break;
-          case 'psychiatrist':
-            data = await apiService.getPsychiatristDashboard();
-            break;
-          case 'hr_manager':
-            data = await apiService.getHrDashboard();
-            break;
-          default:
-            console.log('Unknown role, defaulting to employee dashboard');
-            data = await apiService.getEmployeeDashboard();
-        }
-        
-        setDashboardData(data);
-        
-        // Fetch stress data
+      const fetchDashboardData = async () => {
+        // Refresh user data to ensure we have the latest role information
         try {
-          console.log(`Fetching stress data for role: ${userRole}`);
-          const stressResponse = await apiService.getMyStressScore();
-          setStressData(stressResponse);
-          console.log('Stress data fetched successfully:', stressResponse);
-        } catch (stressError) {
-          console.log('Could not fetch stress data:', stressError.message);
+          await refreshUserData();
+        } catch (error) {
+          console.log('Could not refresh user data:', error);
         }
         
-        // Fetch workload data
         try {
-          console.log(`Fetching workload data for role: ${userRole}`);
-          const workloadResponse = await apiService.getWorkloadsByRole(userRole);
-          setWorkloadData(workloadResponse);
-          console.log('Workload data fetched successfully:', workloadResponse);
-        } catch (workloadError) {
-          console.log('Could not fetch workload data:', workloadError.message);
-        }
-        
-        // Generate recent activities based on available data
-        const activities = [];
-        
-        if (stressData && !stressData.message) {
-          activities.push({
-            id: 1,
-            activity: 'Completed stress assessment',
-            time: 'Recently',
-            type: 'stress',
-            score: stressData.score
-          });
-        }
-        
-        if (workloadData && workloadData.length > 0) {
-          activities.push({
-            id: 2,
-            activity: 'Logged daily workload',
-            time: 'Recently',
-            type: 'task'
-          });
-        }
-        
-        // Add role-specific activities
-        if (userRole === 'supervisor') {
-          activities.push({
-            id: 3,
-            activity: 'Reviewed team workloads',
-            time: 'Today',
-            type: 'task'
-          });
-        }
-        
-        if (userRole === 'psychiatrist') {
-          activities.push({
-            id: 4,
-            activity: 'Consultation session',
-            time: 'Today',
-            type: 'consultant'
-          });
-        }
-        
-        setRecentActivities(activities);
-        setError(null);
-      } catch (error) {
-        console.error('Dashboard error:', error);
-        setError(error.message);
-        showError(`Failed to load dashboard data: ${error.message}`);
-      } finally {
-        setLoading(false);
-      }
-    };
+          setLoading(true);
+          const userRole = getUserRole();
+          console.log('Current user role:', userRole);
+          
+          // Redirect admin users to admin dashboard
+          if (shouldRedirectToAdmin(userRole)) {
+            navigate('/admin-dashboard');
+            return;
+          }
 
-    fetchDashboardData();
-  }, [getUserRole, showError]);
+          // Redirect HR users to HR dashboard
+          if (userRole === 'hr_manager') {
+            navigate('/hr-dashboard');
+            return;
+          }
+          
+          // Fetch main dashboard data
+          let data;
+          switch (userRole) {
+            case 'employee':
+              data = await apiService.getEmployeeDashboard();
+              break;
+            case 'supervisor':
+              data = await apiService.getSupervisorDashboard();
+              break;
+            case 'psychiatrist':
+              data = await apiService.getPsychiatristDashboard();
+              break;
+            default:
+              console.log('Unknown role, defaulting to employee dashboard');
+              data = await apiService.getEmployeeDashboard();
+          }
+          
+          setDashboardData(data);
+          
+          // Fetch stress data
+          try {
+            console.log(`Fetching stress data for role: ${userRole}`);
+            const stressResponse = await apiService.getMyStressScore();
+            setStressData(stressResponse);
+            console.log('Stress data fetched successfully:', stressResponse);
+          } catch (stressError) {
+            console.log('Could not fetch stress data:', stressError.message);
+          }
+          
+          // Fetch workload data
+          try {
+            console.log(`Fetching workload data for role: ${userRole}`);
+            const workloadResponse = await apiService.getWorkloadsByRole(userRole);
+            setWorkloadData(workloadResponse);
+            console.log('Workload data fetched successfully:', workloadResponse);
+          } catch (workloadError) {
+            console.log('Could not fetch workload data:', workloadError.message);
+          }
+          
+          // Generate recent activities based on available data
+          const activities = [];
+          
+          // Add role-specific activities
+          if (userRole === 'supervisor') {
+            activities.push({
+              id: 3,
+              activity: 'Reviewed team workloads',
+              time: 'Today',
+              type: 'task'
+            });
+          }
+          
+          if (userRole === 'psychiatrist') {
+            activities.push({
+              id: 4,
+              activity: 'Consultation session',
+              time: 'Today',
+              type: 'consultant'
+            });
+          }
+          
+          setRecentActivities(activities);
+          setError(null);
+        } catch (error) {
+          console.error('Dashboard error:', error);
+          setError(error.message);
+          showError(`Failed to load dashboard data: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchDashboardData();
+    }, [getUserRole, showError]);
+
+  // Update recent activities when stress and workload data change
+  useEffect(() => {
+    const activities = [];
+    
+    if (stressData && !stressData.message) {
+      activities.push({
+        id: 1,
+        activity: 'Completed stress assessment',
+        time: 'Recently',
+        type: 'stress',
+        score: stressData.score
+      });
+    }
+    
+    if (workloadData && workloadData.length > 0) {
+      activities.push({
+        id: 2,
+        activity: 'Logged daily workload',
+        time: 'Recently',
+        type: 'task'
+      });
+    }
+    
+    // Add role-specific activities
+    const userRole = getUserRole();
+    if (userRole === 'supervisor') {
+      activities.push({
+        id: 3,
+        activity: 'Reviewed team workloads',
+        time: 'Today',
+        type: 'task'
+      });
+    }
+    
+    if (userRole === 'psychiatrist') {
+      activities.push({
+        id: 4,
+        activity: 'Consultation session',
+        time: 'Today',
+        type: 'consultant'
+      });
+    }
+    
+    setRecentActivities(activities);
+  }, [stressData, workloadData, getUserRole]);
 
   const getStressColor = (score) => {
     if (score <= 13) return 'text-green-600 bg-green-100';
