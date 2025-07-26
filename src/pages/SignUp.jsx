@@ -89,10 +89,10 @@ const SignUp = () => {
       baseSchema.department = [(value) => validationRules.required(value, 'Department')];
     }
 
-    if (role === "Supervisor") {
+    // Team is required for Employee and Supervisor
+    if (role === "Employee" || role === "Supervisor") {
       baseSchema.team = [(value) => validationRules.required(value, 'Team')];
     }
-
 
 
     return baseSchema;
@@ -106,8 +106,8 @@ const SignUp = () => {
       setRole(value);
     }
 
-    // Fetch teams when department changes for supervisors
-    if (name === "department" && role === "Supervisor") {
+    // Fetch teams when department changes for employees or supervisors
+    if (name === "department" && (role === "Supervisor" || role === "Employee")) {
       fetchTeamsByDepartment(value);
     }
 
@@ -178,7 +178,7 @@ const SignUp = () => {
         job_role: role,
         employee_id: form.employeeId,
         department: form.department,
-        team: role === "Supervisor" ? (form.team || undefined) : undefined,
+        team: (role === "Employee" || role === "Supervisor") ? (form.team || undefined) : undefined,
         registration_number: form.registrationNumber || undefined,
         hospital: form.hospital || undefined,
         username: form.username,
@@ -443,6 +443,7 @@ const SignUp = () => {
                           ? 'border-red-500 focus:ring-red-500' 
                           : 'border-gray-200 focus:ring-blue-500'
                       }`}
+                      value={form.department}
                     >
                       <option value="">Select your department</option>
                       {departments.map((dept) => (
@@ -464,6 +465,7 @@ const SignUp = () => {
                       placeholder="Enter your department"
                       onChange={handleChange}
                       onBlur={handleBlur}
+                      value={form.department}
                     />
                   )}
                   {touched.department && errors.department && (
@@ -477,7 +479,8 @@ const SignUp = () => {
                 </div>
               )}
 
-              {role === "Supervisor" && (
+              {/* Team selection for Employee and Supervisor */}
+              {(role === "Employee" || role === "Supervisor") && (
                 <div>
                   <label className="block text-[#212121] font-medium mb-2">Team <span className="text-red-500">*</span></label>
                   {teams.length > 0 ? (
@@ -491,8 +494,10 @@ const SignUp = () => {
                           ? 'border-red-500 focus:ring-red-500' 
                           : 'border-gray-200 focus:ring-blue-500'
                       }`}
+                      value={form.team || ''}
+                      disabled={!form.department}
                     >
-                      <option value="">Select your team</option>
+                      <option value="">{form.department ? "Select your team" : "Please select a department first"}</option>
                       {teams.map((team) => (
                         <option key={team.id} value={team.name}>
                           {team.name}
@@ -509,17 +514,19 @@ const SignUp = () => {
                           ? 'border-red-500 focus:ring-red-500' 
                           : 'border-gray-200 focus:ring-blue-500'
                       }`}
-                      placeholder="Enter your team name"
+                      placeholder="Enter your team"
                       onChange={handleChange}
                       onBlur={handleBlur}
+                      value={form.team || ''}
+                      disabled={!form.department}
                     />
                   )}
                   {touched.team && errors.team && (
                     <p className="text-red-500 text-sm mt-1">{errors.team}</p>
                   )}
-                  {departments.length === 0 && (
+                  {!form.department && (
                     <p className="text-yellow-600 text-sm mt-1">
-                      ⚠️ No teams loaded. You can enter your team name manually.
+                      Please select a department first to see available teams.
                     </p>
                   )}
                 </div>
