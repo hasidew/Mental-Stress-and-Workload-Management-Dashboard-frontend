@@ -9,7 +9,7 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import Dashboard from './pages/Dashboard'
 import HrDashboard from './pages/HrDashboard'
-import HrConsultantManagement from './pages/HrConsultantManagement'
+import HrPsychiatristManagement from './pages/HrConsultantManagement'
 import StressScore from './pages/StressScore'
 import AiChat from './pages/AiChat'
 import Consultants from './pages/Consultants'
@@ -48,9 +48,9 @@ function App() {
                   <HrDashboard />
                 </ProtectedRoute>
               } />
-              <Route path="hr-consultant-management" element={
+              <Route path="hr-psychiatrist-management" element={
                 <ProtectedRoute>
-                  <HrConsultantManagement />
+                  <HrPsychiatristManagement />
                 </ProtectedRoute>
               } />
               <Route path="stress-score" element={
@@ -63,7 +63,7 @@ function App() {
                   <AiChat />
                 </ProtectedRoute>
               } />
-              <Route path="consultants" element={
+              <Route path="psychiatrists" element={
                 <ProtectedRoute>
                   <Consultants />
                 </ProtectedRoute>

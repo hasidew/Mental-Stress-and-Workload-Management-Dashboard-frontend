@@ -113,7 +113,7 @@ const Dashboard = () => {
               id: 4,
               activity: 'Consultation session',
               time: 'Today',
-              type: 'consultant'
+              type: 'psychiatrist'
             });
           }
           
@@ -170,7 +170,7 @@ const Dashboard = () => {
         id: 4,
         activity: 'Consultation session',
         time: 'Today',
-        type: 'consultant'
+        type: 'psychiatrist'
       });
     }
     
@@ -481,12 +481,12 @@ const Dashboard = () => {
             </div>
           </Link>
 
-          <Link to="/consultants" className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow">
+          <Link to="/psychiatrists" className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-center">
               <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-orange-600 text-2xl">👨‍⚕️</span>
               </div>
-              <h3 className="text-lg font-semibold text-[#212121] mb-2">Consultants</h3>
+              <h3 className="text-lg font-semibold text-[#212121] mb-2">Psychiatrists</h3>
               <p className="text-[#4F4F4F] text-sm">Expert support</p>
             </div>
           </Link>
@@ -504,7 +504,7 @@ const Dashboard = () => {
                       <span className="text-blue-600 text-sm">
                         {activity.type === 'task' && '📝'}
                         {activity.type === 'chat' && '🤖'}
-                        {activity.type === 'consultant' && '👨‍⚕️'}
+                        {activity.type === 'psychiatrist' && '👨‍⚕️'}
                         {activity.type === 'stress' && '🧠'}
                       </span>
                     </div>

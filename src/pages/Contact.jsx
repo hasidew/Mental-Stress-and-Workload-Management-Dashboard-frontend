@@ -97,7 +97,7 @@ const Contact = () => {
     },
     {
       question: 'Can I speak with a real person?',
-      answer: 'Absolutely! While our AI assistant is available 24/7, you can also connect with our team of mental health professionals through the consultants page.'
+      answer: 'Absolutely! While our AI assistant is available 24/7, you can also connect with our team of mental health professionals through the psychiatrists page.'
     }
   ];
 

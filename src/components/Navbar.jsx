@@ -9,19 +9,19 @@ const Navbar = () => {
     const { isAuthenticated, logout, getUserRole } = useAuth();
     const navigate = useNavigate();
 
-    const navItems = [
+    const publicLinks = [
         { path: '/', label: 'Home' },
-        { path: '/features', label: 'Features' },
         { path: '/about', label: 'About' },
+        { path: '/features', label: 'Features' },
         { path: '/contact', label: 'Contact' }
     ];
 
-    const authenticatedNavItems = [
+    const authenticatedLinks = [
         { path: '/dashboard', label: 'Dashboard' },
-        { path: '/task-management', label: 'Task Management' },
-        { path: '/stress-score', label: 'Stress Assessment' },
+        { path: '/stress-score', label: 'Stress Score' },
         { path: '/ai-chat', label: 'AI Chat' },
-        { path: '/consultants', label: 'Consultants' }
+        { path: '/task-management', label: 'Tasks' },
+        { path: '/psychiatrists', label: 'Psychiatrists' }
     ];
 
     const supervisorNavItems = [
@@ -67,7 +67,7 @@ const Navbar = () => {
                             <>
                                 {(getUserRole() === 'admin' ? adminNavItems : 
                                   getUserRole() === 'supervisor' ? supervisorNavItems : 
-                                  authenticatedNavItems).map((item) => (
+                                  authenticatedLinks).map((item) => (
                                     <Link
                                         key={item.path}
                                         to={item.path}
@@ -83,7 +83,7 @@ const Navbar = () => {
                             </>
                         ) : (
                             <>
-                                {navItems.map((item) => (
+                                {publicLinks.map((item) => (
                                     <Link
                                         key={item.path}
                                         to={item.path}
@@ -174,7 +174,7 @@ const Navbar = () => {
                         <>
                             {(getUserRole() === 'admin' ? adminNavItems : 
                               getUserRole() === 'supervisor' ? supervisorNavItems : 
-                              authenticatedNavItems).map((item) => (
+                              authenticatedLinks).map((item) => (
                                 <Link
                                     key={item.path}
                                     to={item.path}
@@ -207,7 +207,7 @@ const Navbar = () => {
                         </>
                     ) : (
                         <>
-                            {navItems.map((item) => (
+                            {publicLinks.map((item) => (
                                 <Link
                                     key={item.path}
                                     to={item.path}

@@ -14,7 +14,7 @@ const HrDashboard = () => {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [bookingForm, setBookingForm] = useState({
-    consultant_id: '',
+    psychiatrist_id: '',
     booking_date: '',
     booking_time: '',
     duration_minutes: 30,
@@ -23,13 +23,13 @@ const HrDashboard = () => {
   const [availableTimes, setAvailableTimes] = useState([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
   
-  // Consultant management state
-  const [consultants, setConsultants] = useState([]);
-  const [showCreateConsultantModal, setShowCreateConsultantModal] = useState(false);
-  const [showEditConsultantModal, setShowEditConsultantModal] = useState(false);
-  const [editingConsultant, setEditingConsultant] = useState(null);
+  // Psychiatrist management state
+  const [psychiatrists, setPsychiatrists] = useState([]);
+  const [showCreatePsychiatristModal, setShowCreatePsychiatristModal] = useState(false);
+  const [showEditPsychiatristModal, setShowEditPsychiatristModal] = useState(false);
+  const [editingPsychiatrist, setEditingPsychiatrist] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
-  const [consultantToDelete, setConsultantToDelete] = useState(null);
+  const [psychiatristToDelete, setPsychiatristToDelete] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -38,12 +38,12 @@ const HrDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [data, consultantsData] = await Promise.all([
+      const [data, psychiatristsData] = await Promise.all([
         apiService.getHrDashboard(),
-        apiService.getAllConsultants()
+        apiService.getAllPsychiatrists()
       ]);
       setDashboardData(data);
-      setConsultants(consultantsData);
+      setPsychiatrists(psychiatristsData);
     } catch (error) {
       showError('Failed to load dashboard data');
       console.error('Error fetching dashboard data:', error);
@@ -54,11 +54,11 @@ const HrDashboard = () => {
 
 
 
-  const handleBookConsultant = async (e) => {
+  const handleBookPsychiatrist = async (e) => {
     e.preventDefault();
     try {
       const bookingData = {
-        consultant_id: parseInt(bookingForm.consultant_id),
+        psychiatrist_id: parseInt(bookingForm.psychiatrist_id),
         booking_date: `${bookingForm.booking_date}T${bookingForm.booking_time}:00`,
         duration_minutes: bookingForm.duration_minutes,
         notes: bookingForm.notes
@@ -66,16 +66,16 @@ const HrDashboard = () => {
 
       if (selectedEmployee) {
         await apiService.hrBookForEmployee(selectedEmployee.id, bookingData);
-        showSuccess('Consultant booked for employee successfully');
+        showSuccess('Psychiatrist booked for employee successfully');
       } else {
-        await apiService.hrBookConsultant(bookingData);
-        showSuccess('Consultant booked successfully');
+        await apiService.hrBookPsychiatrist(bookingData);
+        showSuccess('Psychiatrist booked successfully');
       }
 
       setShowBookingModal(false);
       setAvailableTimes([]);
       setBookingForm({
-        consultant_id: '',
+        psychiatrist_id: '',
         booking_date: '',
         booking_time: '',
         duration_minutes: 30,
@@ -84,7 +84,7 @@ const HrDashboard = () => {
       setSelectedEmployee(null);
       fetchDashboardData();
     } catch (error) {
-      showError('Failed to book consultant');
+      showError('Failed to book psychiatrist');
     }
   };
 
@@ -94,15 +94,15 @@ const HrDashboard = () => {
     return { level: 'High', color: 'text-red-600', bg: 'bg-red-100' };
   };
 
-  const fetchAvailableTimes = async (consultantId, date) => {
-    if (!consultantId || !date) {
+  const fetchAvailableTimes = async (psychiatristId, date) => {
+    if (!psychiatristId || !date) {
       setAvailableTimes([]);
       return;
     }
 
     try {
       setLoadingTimes(true);
-      const response = await apiService.getConsultantAvailableTimes(consultantId, date);
+      const response = await apiService.getPsychiatristAvailableTimes(psychiatristId, date);
       setAvailableTimes(response.available_times || []);
     } catch (error) {
       console.error('Error fetching available times:', error);
@@ -115,63 +115,63 @@ const HrDashboard = () => {
   const handleBookingFormChange = (field, value) => {
     setBookingForm(prev => ({ ...prev, [field]: value }));
     
-    // Fetch available times when consultant or date changes
-    if (field === 'consultant_id' || field === 'booking_date') {
-      const consultantId = field === 'consultant_id' ? value : bookingForm.consultant_id;
+    // Fetch available times when psychiatrist or date changes
+    if (field === 'psychiatrist_id' || field === 'booking_date') {
+      const psychiatristId = field === 'psychiatrist_id' ? value : bookingForm.psychiatrist_id;
       const date = field === 'booking_date' ? value : bookingForm.booking_date;
       
-      if (consultantId && date) {
-        fetchAvailableTimes(consultantId, date);
+      if (psychiatristId && date) {
+        fetchAvailableTimes(psychiatristId, date);
       } else {
         setAvailableTimes([]);
       }
     }
   };
 
-  // Consultant management functions
-  const handleCreateConsultant = async (consultantData) => {
+  // Psychiatrist management functions
+  const handleCreatePsychiatrist = async (psychiatristData) => {
     try {
-      await apiService.createConsultantWithAvailability(consultantData);
-      showSuccess('Consultant created successfully!');
-      setShowCreateConsultantModal(false);
+      await apiService.createPsychiatristWithAvailability(psychiatristData);
+      showSuccess('Psychiatrist created successfully!');
+      setShowCreatePsychiatristModal(false);
       fetchDashboardData(); // Refresh data
     } catch (error) {
-      showError(error.message || 'Failed to create consultant');
+      showError(error.message || 'Failed to create psychiatrist');
     }
   };
 
-  const handleUpdateConsultant = async (consultantData) => {
+  const handleUpdatePsychiatrist = async (psychiatristData) => {
     try {
-      await apiService.updateConsultant(editingConsultant.id, consultantData);
-      showSuccess('Consultant updated successfully!');
-      setShowEditConsultantModal(false);
-      setEditingConsultant(null);
+      await apiService.updatePsychiatrist(editingPsychiatrist.id, psychiatristData);
+      showSuccess('Psychiatrist updated successfully!');
+      setShowEditPsychiatristModal(false);
+      setEditingPsychiatrist(null);
       fetchDashboardData(); // Refresh data
     } catch (error) {
-      showError(error.message || 'Failed to update consultant');
+      showError(error.message || 'Failed to update psychiatrist');
     }
   };
 
-  const handleDeleteConsultant = async (consultantId) => {
-    setConsultantToDelete(consultantId);
+  const handleDeletePsychiatrist = async (psychiatristId) => {
+    setPsychiatristToDelete(psychiatristId);
     setShowDeleteConfirmModal(true);
   };
 
-  const confirmDeleteConsultant = async () => {
+  const confirmDeletePsychiatrist = async () => {
     try {
-      await apiService.deleteConsultant(consultantToDelete);
-      showSuccess('Consultant deleted successfully!');
+      await apiService.deletePsychiatrist(psychiatristToDelete);
+      showSuccess('Psychiatrist deleted successfully!');
       setShowDeleteConfirmModal(false);
-      setConsultantToDelete(null);
+      setPsychiatristToDelete(null);
       fetchDashboardData(); // Refresh data
     } catch (error) {
-      showError(error.message || 'Failed to delete consultant');
+      showError(error.message || 'Failed to delete psychiatrist');
     }
   };
 
-  const handleEditConsultant = (consultant) => {
-    setEditingConsultant(consultant);
-    setShowEditConsultantModal(true);
+  const handleEditPsychiatrist = (psychiatrist) => {
+    setEditingPsychiatrist(psychiatrist);
+    setShowEditPsychiatristModal(true);
   };
 
   // Function to check for overlapping time slots
@@ -298,8 +298,8 @@ const HrDashboard = () => {
               {[
                 { id: 'overview', name: 'Overview', icon: '📊' },
                 { id: 'stress-scores', name: 'Shared Stress Scores', icon: '📈' },
-                { id: 'consultants', name: 'Consultants', icon: '👨‍⚕️' },
-                { id: 'consultant-management', name: 'Manage Consultants', icon: '⚙️' }
+                { id: 'psychiatrists', name: 'Psychiatrists', icon: '👨‍⚕️' },
+                { id: 'psychiatrist-management', name: 'Manage Psychiatrists', icon: '⚙️' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -362,13 +362,13 @@ const HrDashboard = () => {
                         onClick={() => setShowBookingModal(true)}
                         className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
                       >
-                        Book Consultant Session
+                        Book Psychiatrist Session
                       </button>
                       <Link
-                        to="/consultants"
+                        to="/psychiatrists"
                         className="block w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center"
                       >
-                        View Available Consultants
+                        View Available Psychiatrists
                       </Link>
 
                     </div>
@@ -380,7 +380,7 @@ const HrDashboard = () => {
                       {dashboardData.hr_bookings.slice(0, 3).map((booking) => (
                         <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div>
-                            <p className="font-medium text-gray-900">{booking.consultant_name}</p>
+                            <p className="font-medium text-gray-900">{booking.psychiatrist_name}</p>
                             <p className="text-sm text-gray-600">
                               {new Date(booking.booking_date).toLocaleDateString()}
                             </p>
@@ -409,7 +409,7 @@ const HrDashboard = () => {
                     onClick={() => setShowBookingModal(true)}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
                   >
-                    Book Consultant for Employee
+                    Book Psychiatrist for Employee
                   </button>
                 </div>
 
@@ -449,7 +449,7 @@ const HrDashboard = () => {
                             }}
                             className="mt-4 w-full bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
                           >
-                            Book Consultant Session
+                            Book Psychiatrist Session
                           </button>
                         )}
                       </div>
@@ -465,11 +465,11 @@ const HrDashboard = () => {
 
 
 
-            {/* Consultants Tab */}
-            {activeTab === 'consultants' && (
+            {/* Psychiatrists Tab */}
+            {activeTab === 'psychiatrists' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Available Consultants</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Available Psychiatrists</h3>
                   <button
                     onClick={() => setShowBookingModal(true)}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
@@ -479,14 +479,14 @@ const HrDashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {dashboardData.available_consultants.map((consultant) => (
-                    <div key={consultant.id} className="bg-white border rounded-lg p-6">
-                      <h4 className="font-semibold text-gray-900 mb-2">{consultant.name}</h4>
-                      <p className="text-sm text-gray-600 mb-2">{consultant.specialization}</p>
-                      <p className="text-sm text-gray-600 mb-4">{consultant.hospital}</p>
+                  {dashboardData.available_psychiatrists.map((psychiatrist) => (
+                    <div key={psychiatrist.id} className="bg-white border rounded-lg p-6">
+                      <h4 className="font-semibold text-gray-900 mb-2">{psychiatrist.name}</h4>
+                      <p className="text-sm text-gray-600 mb-2">{psychiatrist.specialization}</p>
+                      <p className="text-sm text-gray-600 mb-4">{psychiatrist.hospital}</p>
                       <button
                         onClick={() => {
-                          setBookingForm({ ...bookingForm, consultant_id: consultant.id });
+                          setBookingForm({ ...bookingForm, psychiatrist_id: psychiatrist.id });
                           setShowBookingModal(true);
                         }}
                         className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -506,7 +506,7 @@ const HrDashboard = () => {
                         <div key={booking.id} className="bg-white border rounded-lg p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-medium text-gray-900">{booking.consultant_name}</p>
+                              <p className="font-medium text-gray-900">{booking.psychiatrist_name}</p>
                               <p className="text-sm text-gray-600">
                                 {new Date(booking.booking_date).toLocaleDateString()} at{' '}
                                 {new Date(booking.booking_date).toLocaleTimeString()}
@@ -535,16 +535,16 @@ const HrDashboard = () => {
               </div>
             )}
 
-            {/* Consultant Management Tab */}
-            {activeTab === 'consultant-management' && (
+            {/* Psychiatrist Management Tab */}
+            {activeTab === 'psychiatrist-management' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Manage Consultants</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Manage Psychiatrists</h3>
                   <button
-                    onClick={() => setShowCreateConsultantModal(true)}
+                    onClick={() => setShowCreatePsychiatristModal(true)}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    Add Consultant
+                    Add Psychiatrist
                   </button>
                 </div>
 
@@ -573,32 +573,32 @@ const HrDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {consultants.map((consultant) => (
-                        <tr key={consultant.id}>
+                      {psychiatrists.map((psychiatrist) => (
+                        <tr key={psychiatrist.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {consultant.name}
+                            {psychiatrist.name}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {consultant.qualifications}
+                            {psychiatrist.qualifications}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {consultant.registration_number}
+                            {psychiatrist.registration_number}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {consultant.hospital}
+                            {psychiatrist.hospital}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {consultant.specialization}
+                            {psychiatrist.specialization}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button
-                              onClick={() => handleEditConsultant(consultant)}
+                              onClick={() => handleEditPsychiatrist(psychiatrist)}
                               className="text-blue-600 hover:text-blue-900 mr-3"
                             >
                               Edit
                             </button>
                             <button
-                              onClick={() => handleDeleteConsultant(consultant.id)}
+                              onClick={() => handleDeletePsychiatrist(psychiatrist.id)}
                               className="text-red-600 hover:text-red-900"
                             >
                               Delete
@@ -617,27 +617,27 @@ const HrDashboard = () => {
 
 
 
-      {/* Book Consultant Modal */}
+      {/* Book Psychiatrist Modal */}
       {showBookingModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                {selectedEmployee ? `Book Consultant for ${selectedEmployee.name}` : 'Book Consultant Session'}
+                {selectedEmployee ? `Book Psychiatrist for ${selectedEmployee.name}` : 'Book Psychiatrist Session'}
               </h3>
-              <form onSubmit={handleBookConsultant} className="space-y-4">
+              <form onSubmit={handleBookPsychiatrist} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Consultant</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Psychiatrist</label>
                   <select
-                    value={bookingForm.consultant_id}
-                    onChange={(e) => handleBookingFormChange('consultant_id', e.target.value)}
+                    value={bookingForm.psychiatrist_id}
+                    onChange={(e) => handleBookingFormChange('psychiatrist_id', e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   >
-                    <option value="">Select a consultant</option>
-                    {dashboardData.available_consultants.map((consultant) => (
-                      <option key={consultant.id} value={consultant.id}>
-                        {consultant.name} - {consultant.specialization}
+                    <option value="">Select a psychiatrist</option>
+                    {dashboardData.available_psychiatrists.map((psychiatrist) => (
+                      <option key={psychiatrist.id} value={psychiatrist.id}>
+                        {psychiatrist.name} - {psychiatrist.specialization}
                       </option>
                     ))}
                   </select>
@@ -670,8 +670,8 @@ const HrDashboard = () => {
                       </option>
                     ))}
                   </select>
-                  {availableTimes.length === 0 && bookingForm.consultant_id && bookingForm.booking_date && !loadingTimes && (
-                    <p className="text-sm text-red-600 mt-1">No available times for this consultant on the selected date</p>
+                  {availableTimes.length === 0 && bookingForm.psychiatrist_id && bookingForm.booking_date && !loadingTimes && (
+                    <p className="text-sm text-red-600 mt-1">No available times for this psychiatrist on the selected date</p>
                   )}
                 </div>
                 <div>
@@ -707,7 +707,7 @@ const HrDashboard = () => {
                       setSelectedEmployee(null);
                       setAvailableTimes([]);
                       setBookingForm({
-                        consultant_id: '',
+                        psychiatrist_id: '',
                         booking_date: '',
                         booking_time: '',
                         duration_minutes: 30,
@@ -725,23 +725,23 @@ const HrDashboard = () => {
         </div>
       )}
 
-      {/* Create Consultant Modal */}
-      {showCreateConsultantModal && (
-        <CreateConsultantModal
-          onClose={() => setShowCreateConsultantModal(false)}
-          onSubmit={handleCreateConsultant}
+      {/* Create Psychiatrist Modal */}
+      {showCreatePsychiatristModal && (
+        <CreatePsychiatristModal
+          onClose={() => setShowCreatePsychiatristModal(false)}
+          onSubmit={handleCreatePsychiatrist}
         />
       )}
 
-      {/* Edit Consultant Modal */}
-      {showEditConsultantModal && editingConsultant && (
-        <EditConsultantModal
+      {/* Edit Psychiatrist Modal */}
+      {showEditPsychiatristModal && editingPsychiatrist && (
+        <EditPsychiatristModal
           onClose={() => {
-            setShowEditConsultantModal(false);
-            setEditingConsultant(null);
+            setShowEditPsychiatristModal(false);
+            setEditingPsychiatrist(null);
           }}
-          onSubmit={handleUpdateConsultant}
-          consultant={editingConsultant}
+          onSubmit={handleUpdatePsychiatrist}
+          psychiatrist={editingPsychiatrist}
         />
       )}
 
@@ -750,11 +750,11 @@ const HrDashboard = () => {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Consultant</h3>
-              <p className="text-gray-600 mb-6">Are you sure you want to delete this consultant? This action cannot be undone.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Psychiatrist</h3>
+              <p className="text-gray-600 mb-6">Are you sure you want to delete this psychiatrist? This action cannot be undone.</p>
               <div className="flex space-x-3">
                 <button
-                  onClick={confirmDeleteConsultant}
+                  onClick={confirmDeletePsychiatrist}
                   className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                 >
                   Delete
@@ -762,7 +762,7 @@ const HrDashboard = () => {
                 <button
                   onClick={() => {
                     setShowDeleteConfirmModal(false);
-                    setConsultantToDelete(null);
+                    setPsychiatristToDelete(null);
                   }}
                   className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
                 >
@@ -777,8 +777,8 @@ const HrDashboard = () => {
   );
 };
 
-// Create Consultant Modal Component
-const CreateConsultantModal = ({ onClose, onSubmit }) => {
+// Create Psychiatrist Modal Component
+const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
   const { showError } = useToast();
   const [formData, setFormData] = useState({
     name: '',
@@ -804,7 +804,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
     { value: 6, label: 'Sunday' }
   ];
 
-  // Validation schema for consultant creation
+  // Validation schema for psychiatrist creation
   const validationSchema = {
     name: [validationRules.required, validationRules.name],
     qualifications: [validationRules.required, (value) => validationRules.textLength(value, 'Qualifications', 2, 200)],
@@ -902,7 +902,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
       setIsSubmitting(true);
       await onSubmit(formData);
     } catch (error) {
-      showError(error.message || 'Failed to create consultant');
+      showError(error.message || 'Failed to create psychiatrist');
     } finally {
       setIsSubmitting(false);
     }
@@ -914,7 +914,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold text-[#212121] flex items-center">
             <span className="mr-2">👨‍⚕️</span>
-            Add New Consultant
+            Add New Psychiatrist
           </h3>
           <button
             onClick={onClose}
@@ -945,7 +945,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
                       ? 'border-red-500 focus:ring-red-500' 
                       : 'border-gray-200 focus:ring-blue-500'
                   }`}
-                  placeholder="Enter consultant's full name"
+                  placeholder="Enter psychiatrist's full name"
                 />
                 {touched.name && errors.name && (
                   <p className="text-red-500 text-sm mt-1">{errors.name}</p>
@@ -1152,7 +1152,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
               disabled={isSubmitting}
               className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Creating...' : 'Create Consultant'}
+              {isSubmitting ? 'Creating...' : 'Create Psychiatrist'}
             </button>
             <button
               type="button"
@@ -1168,18 +1168,18 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
   );
 };
 
-// Edit Consultant Modal Component
-const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
+// Edit Psychiatrist Modal Component
+const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
   const { showError } = useToast();
   const [formData, setFormData] = useState({
-    name: consultant.name || '',
-    qualifications: consultant.qualifications || '',
-    registration_number: consultant.registration_number || '',
-    hospital: consultant.hospital || '',
-    specialization: consultant.specialization || '',
-    username: consultant.username || '',
+    name: psychiatrist.name || '',
+    qualifications: psychiatrist.qualifications || '',
+    registration_number: psychiatrist.registration_number || '',
+    hospital: psychiatrist.hospital || '',
+    specialization: psychiatrist.specialization || '',
+    username: psychiatrist.username || '',
     password: '',
-    availabilities: consultant.availabilities || []
+    availabilities: psychiatrist.availabilities || []
   });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -1195,7 +1195,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
     { value: 6, label: 'Sunday' }
   ];
 
-  // Validation schema for consultant editing
+  // Validation schema for psychiatrist editing
   const validationSchema = {
     name: [validationRules.required, validationRules.name],
     qualifications: [validationRules.required, (value) => validationRules.textLength(value, 'Qualifications', 2, 200)],
@@ -1293,7 +1293,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
       setIsSubmitting(true);
       await onSubmit(formData);
     } catch (error) {
-      showError(error.message || 'Failed to update consultant');
+      showError(error.message || 'Failed to update psychiatrist');
     } finally {
       setIsSubmitting(false);
     }
@@ -1305,7 +1305,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold text-[#212121] flex items-center">
             <span className="mr-2">✏️</span>
-            Edit Consultant
+            Edit Psychiatrist
           </h3>
           <button
             onClick={onClose}
@@ -1336,7 +1336,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
                       ? 'border-red-500 focus:ring-red-500' 
                       : 'border-gray-200 focus:ring-blue-500'
                   }`}
-                  placeholder="Enter consultant's full name"
+                  placeholder="Enter psychiatrist's full name"
                 />
                 {touched.name && errors.name && (
                   <p className="text-red-500 text-sm mt-1">{errors.name}</p>
@@ -1543,7 +1543,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
               disabled={isSubmitting}
               className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Updating...' : 'Update Consultant'}
+              {isSubmitting ? 'Updating...' : 'Update Psychiatrist'}
             </button>
             <button
               type="button"

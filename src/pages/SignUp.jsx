@@ -206,7 +206,7 @@ const SignUp = () => {
       case 'Employee': return '👨‍💼';
       case 'Supervisor': return '👨‍💻';
       case 'HR Manager': return '👩‍💼';
-      case 'Consultant': return '👨‍⚕️';
+      case 'Psychiatrist': return '👨‍⚕️';
       default: return '👤';
     }
   };

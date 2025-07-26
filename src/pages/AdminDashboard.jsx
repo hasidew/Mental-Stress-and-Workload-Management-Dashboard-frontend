@@ -42,6 +42,13 @@ const AdminDashboard = () => {
   const [showEditConsultantModal, setShowEditConsultantModal] = useState(false);
   const [editingConsultant, setEditingConsultant] = useState(null);
 
+  // Psychiatrist-related state variables
+  const [psychiatrists, setPsychiatrists] = useState([]);
+  const [showCreatePsychiatristModal, setShowCreatePsychiatristModal] = useState(false);
+  const [showEditPsychiatristModal, setShowEditPsychiatristModal] = useState(false);
+  const [editingPsychiatrist, setEditingPsychiatrist] = useState(null);
+  const [psychiatristToDelete, setPsychiatristToDelete] = useState(null);
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -853,6 +860,106 @@ const AdminDashboard = () => {
               </div>
             )}
 
+            {activeTab === 'psychiatrists' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-[#212121]">All Psychiatrists</h3>
+                  <button
+                    onClick={() => setShowCreatePsychiatristModal(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                  >
+                    Add Psychiatrists
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Qualifications
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Registration Number
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Hospital
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Specialization
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Availability
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {psychiatrists.map((psychiatrist) => (
+                        <tr key={psychiatrist.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {psychiatrist.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {psychiatrist.qualifications}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {psychiatrist.registration_number}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {psychiatrist.hospital}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {psychiatrist.specialization}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            <div className="max-w-xs">
+                              {psychiatrist.availabilities && psychiatrist.availabilities.length > 0 ? (
+                                <div className="space-y-1">
+                                  {psychiatrist.availabilities.map((avail, index) => {
+                                    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                    const dayName = days[avail.day_of_week];
+                                    return (
+                                      <div key={index} className="text-xs bg-blue-50 px-2 py-1 rounded">
+                                        <span className="font-medium">{dayName}:</span> {avail.start_time} - {avail.end_time}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">No availability set</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => {
+                                setEditingPsychiatrist(psychiatrist);
+                                setShowEditPsychiatristModal(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-900 mr-2"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteConsultant(psychiatrist.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'requests' && (
               <div>
                 <div className="flex justify-between items-center mb-4">
@@ -1051,6 +1158,7 @@ const AdminDashboard = () => {
               setUserToDelete(null);
               setTeamToDelete(null);
               setConsultantToDelete(null);
+              setPsychiatristToDelete(null);
             }}
             onConfirm={() => {
               if (userToDelete) {
@@ -1059,9 +1167,11 @@ const AdminDashboard = () => {
                 confirmDeleteTeam();
               } else if (consultantToDelete) {
                 confirmDeleteConsultant();
+              } else if (psychiatristToDelete) {
+                confirmDeletePsychiatrist();
               }
             }}
-            type={userToDelete ? 'user' : teamToDelete ? 'team' : 'consultant'}
+            type={userToDelete ? 'user' : teamToDelete ? 'team' : consultantToDelete ? 'consultant' : psychiatristToDelete ? 'psychiatrist' : 'user'}
           />
         )}
 
@@ -2563,6 +2673,7 @@ const DeleteConfirmModal = ({ onClose, onConfirm, type }) => {
     if (type === 'user') return 'Delete User';
     if (type === 'team') return 'Delete Team';
     if (type === 'consultant') return 'Delete Consultant';
+    if (type === 'psychiatrist') return 'Delete Psychiatrists';
     return 'Delete Item';
   };
 
@@ -2573,6 +2684,8 @@ const DeleteConfirmModal = ({ onClose, onConfirm, type }) => {
       return 'Are you sure you want to delete this team? This will remove all team assignments and demote the supervisor.';
     } else if (type === 'consultant') {
       return 'Are you sure you want to delete this consultant? This action cannot be undone.';
+    } else if (type === 'psychiatrist') {
+      return 'Are you sure you want to delete this psychiatrists? This action cannot be undone.';
     }
     return 'Are you sure you want to delete this item? This action cannot be undone.';
   };

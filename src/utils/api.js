@@ -272,8 +272,8 @@ class ApiService {
     return await this.request('/dashboard/hr/my-workloads');
   }
 
-  async hrBookConsultant(bookingData) {
-    return await this.request('/dashboard/hr/book-consultant', {
+  async hrBookPsychiatrist(bookingData) {
+    return await this.request('/dashboard/hr/book-psychiatrist', {
       method: 'POST',
       body: JSON.stringify(bookingData),
     });
@@ -436,6 +436,58 @@ class ApiService {
     return await this.request(`/hr/consultants/${consultantId}/available-times?date=${date}`);
   }
 
+  // Psychiatrist management
+  async createPsychiatristWithAvailability(psychiatristData) {
+    // Use HR endpoint for HR managers, admin endpoint for admins
+    const userRole = this.getUserRole();
+    const endpoint = userRole === 'hr_manager' ? '/hr/psychiatrists/with-availability' : '/admin/psychiatrists/with-availability';
+    return await this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(psychiatristData),
+    });
+  }
+
+  async getAllPsychiatrists() {
+    // Use HR endpoint for HR managers, admin endpoint for admins
+    const userRole = this.getUserRole();
+    const endpoint = userRole === 'hr_manager' ? '/hr/psychiatrists' : '/admin/psychiatrists';
+    return await this.request(endpoint);
+  }
+
+  async getPsychiatrist(psychiatristId) {
+    // Use HR endpoint for HR managers, admin endpoint for admins
+    const userRole = this.getUserRole();
+    const endpoint = userRole === 'hr_manager' ? `/hr/psychiatrists/${psychiatristId}` : `/admin/psychiatrists/${psychiatristId}`;
+    return await this.request(endpoint);
+  }
+
+  async updatePsychiatrist(psychiatristId, psychiatristData) {
+    // Use HR endpoint for HR managers, admin endpoint for admins
+    const userRole = this.getUserRole();
+    const endpoint = userRole === 'hr_manager' ? `/hr/psychiatrists/${psychiatristId}` : `/admin/psychiatrists/${psychiatristId}`;
+    return await this.request(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(psychiatristData),
+    });
+  }
+
+  async deletePsychiatrist(psychiatristId) {
+    // Use HR endpoint for HR managers, admin endpoint for admins
+    const userRole = this.getUserRole();
+    const endpoint = userRole === 'hr_manager' ? `/hr/psychiatrists/${psychiatristId}` : `/admin/psychiatrists/${psychiatristId}`;
+    return await this.request(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
+  async getPsychiatristBookings(psychiatristId) {
+    return await this.request(`/hr/psychiatrists/${psychiatristId}/bookings`);
+  }
+
+  async getPsychiatristAvailableTimes(psychiatristId, date) {
+    return await this.request(`/hr/psychiatrists/${psychiatristId}/available-times?date=${date}`);
+  }
+
   // Admin registration
   async registerAdmin(adminData) {
     return await this.request('/auth/admin/register', {
@@ -520,44 +572,44 @@ class ApiService {
     return await this.request('/stress/my-history');
   }
 
-  // Consultant endpoints
-  async getAvailableConsultants() {
-    return await this.request('/consultant/available');
+  // Psychiatrist endpoints
+  async getAvailablePsychiatrists() {
+    return await this.request('/psychiatrist/available');
   }
 
-  async bookConsultation(bookingData) {
-    return await this.request('/consultant/book', {
+  async bookPsychiatrist(bookingData) {
+    return await this.request('/psychiatrist/book', {
       method: 'POST',
       body: JSON.stringify(bookingData),
     });
   }
 
-  async getMyBookings() {
-    return await this.request('/consultant/my-bookings');
+  async getMyPsychiatristBookings() {
+    return await this.request('/psychiatrist/my-bookings');
   }
 
-  async updateBooking(bookingId, bookingData) {
-    return await this.request(`/consultant/bookings/${bookingId}`, {
+  async updatePsychiatristBooking(bookingId, bookingData) {
+    return await this.request(`/psychiatrist/bookings/${bookingId}`, {
       method: 'PUT',
       body: JSON.stringify(bookingData),
     });
   }
 
-  async cancelBooking(bookingId) {
-    return await this.request(`/consultant/bookings/${bookingId}`, {
+  async cancelPsychiatristBooking(bookingId) {
+    return await this.request(`/psychiatrist/bookings/${bookingId}`, {
       method: 'DELETE',
     });
   }
 
-  async bookForEmployee(employeeId, bookingData) {
-    return await this.request(`/consultant/book-for-employee?employee_id=${employeeId}`, {
+  async bookPsychiatristForEmployee(employeeId, bookingData) {
+    return await this.request(`/psychiatrist/book-for-employee?employee_id=${employeeId}`, {
       method: 'POST',
       body: JSON.stringify(bookingData),
     });
   }
 
-  async getTeamBookings() {
-    return await this.request('/consultant/team-bookings');
+  async getTeamPsychiatristBookings() {
+    return await this.request('/psychiatrist/team-bookings');
   }
 
   // User data refresh with role change detection

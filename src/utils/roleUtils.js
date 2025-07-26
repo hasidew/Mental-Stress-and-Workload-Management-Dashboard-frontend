@@ -18,7 +18,7 @@ export const getRoleBasedUrls = (role) => {
     dashboard: getDashboardUrl(role),
     stressScore: '/stress-score',
     aiChat: '/ai-chat',
-    consultants: '/consultants',
+    psychiatrists: '/psychiatrists',
     taskManagement: '/task-management',
   };
 
@@ -30,21 +30,21 @@ export const getRoleBasedUrls = (role) => {
         users: '/admin/users',
         departments: '/admin/departments',
         teams: '/admin/teams',
-        consultants: '/admin/consultants',
+        psychiatrists: '/admin/psychiatrists',
       };
     case 'supervisor':
       return {
         ...baseUrls,
         supervisorTaskManagement: '/supervisor/task-management',
         supervisorStressMonitoring: '/supervisor/stress-monitoring',
-        teamBookings: '/consultant/team-bookings',
+        teamBookings: '/psychiatrist/team-bookings',
         teamStressScores: '/stress/team-scores',
       };
     case 'hr_manager':
       return {
         ...baseUrls,
         hrDashboard: '/hr-dashboard',
-        teamBookings: '/consultant/team-bookings',
+        teamBookings: '/psychiatrist/team-bookings',
         teamStressScores: '/stress/team-scores',
       };
     default:
@@ -59,10 +59,10 @@ export const shouldRedirectToAdmin = (role) => {
 export const canAccessFeature = (feature, role) => {
   const rolePermissions = {
     admin: ['all'],
-    supervisor: ['dashboard', 'stressScore', 'aiChat', 'consultants', 'taskManagement', 'supervisorTaskManagement', 'supervisorStressMonitoring', 'teamBookings', 'teamStressScores'],
-    hr_manager: ['dashboard', 'stressScore', 'aiChat', 'consultants', 'taskManagement', 'teamBookings', 'teamStressScores'],
-    psychiatrist: ['dashboard', 'stressScore', 'aiChat', 'consultants'],
-    employee: ['dashboard', 'stressScore', 'aiChat', 'consultants', 'taskManagement'],
+    supervisor: ['dashboard', 'stressScore', 'aiChat', 'psychiatrists', 'taskManagement', 'supervisorTaskManagement', 'supervisorStressMonitoring', 'teamBookings', 'teamStressScores'],
+    hr_manager: ['dashboard', 'stressScore', 'aiChat', 'psychiatrists', 'taskManagement', 'teamBookings', 'teamStressScores'],
+    psychiatrist: ['dashboard', 'stressScore', 'aiChat', 'psychiatrists'],
+    employee: ['dashboard', 'stressScore', 'aiChat', 'psychiatrists', 'taskManagement'],
   };
 
   const permissions = rolePermissions[role] || rolePermissions.employee;

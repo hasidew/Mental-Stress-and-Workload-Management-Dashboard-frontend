@@ -3,24 +3,28 @@ import { useAuth } from '../contexts/AuthContext';
 import apiService from '../utils/api';
 import { useToast } from '../contexts/ToastContext';
 
-const HrConsultantManagement = () => {
-  const { getUserRole } = useAuth();
+const HrPsychiatristManagement = () => {
   const { showError, showSuccess } = useToast();
-  const [consultants, setConsultants] = useState([]);
+  const [psychiatrists, setPsychiatrists] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedPsychiatrist, setSelectedPsychiatrist] = useState(null);
+  const [psychiatristBookings, setPsychiatristBookings] = useState([]);
   const [showBookingsModal, setShowBookingsModal] = useState(false);
-  const [selectedConsultant, setSelectedConsultant] = useState(null);
-  const [consultantBookings, setConsultantBookings] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     qualifications: '',
     registration_number: '',
     hospital: '',
     specialization: '',
+    username: '',
+    password: '',
     availabilities: []
   });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const daysOfWeek = [
     { value: 0, label: 'Monday' },
@@ -33,29 +37,29 @@ const HrConsultantManagement = () => {
   ];
 
   useEffect(() => {
-    fetchConsultants();
+    fetchPsychiatrists();
   }, []);
 
-  const fetchConsultants = async () => {
+  const fetchPsychiatrists = async () => {
     try {
       setLoading(true);
-      const data = await apiService.getAllConsultants();
-      setConsultants(data);
+      const data = await apiService.getAllPsychiatrists();
+      setPsychiatrists(data);
     } catch (error) {
-      showError('Failed to load consultants');
-      console.error('Error fetching consultants:', error);
+      showError('Failed to load psychiatrists');
+      console.error('Error fetching psychiatrists:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchConsultantBookings = async (consultantId) => {
+  const fetchPsychiatristBookings = async (psychiatristId) => {
     try {
-      const data = await apiService.getConsultantBookings(consultantId);
-      setConsultantBookings(data);
+      const data = await apiService.getPsychiatristBookings(psychiatristId);
+      setPsychiatristBookings(data);
     } catch (error) {
-      showError('Failed to load consultant bookings');
-      console.error('Error fetching consultant bookings:', error);
+      showError('Failed to load psychiatrist bookings');
+      console.error('Error fetching psychiatrist bookings:', error);
     }
   };
 
@@ -86,13 +90,13 @@ const HrConsultantManagement = () => {
     e.preventDefault();
     try {
       if (showEditModal) {
-        await apiService.updateConsultant(selectedConsultant.id, formData);
-        showSuccess('Consultant updated successfully');
+        await apiService.updatePsychiatrist(selectedPsychiatrist.id, formData);
+        showSuccess('Psychiatrist updated successfully');
       } else {
-        await apiService.createConsultantWithAvailability(formData);
-        showSuccess('Consultant added successfully');
+        await apiService.createPsychiatristWithAvailability(formData);
+        showSuccess('Psychiatrist added successfully');
       }
-      setShowAddModal(false);
+      setShowModal(false);
       setShowEditModal(false);
       setFormData({
         name: '',
@@ -100,24 +104,28 @@ const HrConsultantManagement = () => {
         registration_number: '',
         hospital: '',
         specialization: '',
+        username: '',
+        password: '',
         availabilities: []
       });
-      setSelectedConsultant(null);
-      fetchConsultants();
+      setSelectedPsychiatrist(null);
+      fetchPsychiatrists();
     } catch (error) {
-      showError(error.message || 'Failed to save consultant');
+      showError(error.message || 'Failed to save psychiatrist');
     }
   };
 
-  const handleEdit = (consultant) => {
-    setSelectedConsultant(consultant);
+  const handleEdit = (psychiatrist) => {
+    setSelectedPsychiatrist(psychiatrist);
     setFormData({
-      name: consultant.name,
-      qualifications: consultant.qualifications,
-      registration_number: consultant.registration_number,
-      hospital: consultant.hospital,
-      specialization: consultant.specialization,
-      availabilities: consultant.availabilities.map(avail => ({
+      name: psychiatrist.name,
+      qualifications: psychiatrist.qualifications,
+      registration_number: psychiatrist.registration_number,
+      hospital: psychiatrist.hospital,
+      specialization: psychiatrist.specialization,
+      username: psychiatrist.username,
+      password: '', // Password is not editable
+      availabilities: psychiatrist.availabilities.map(avail => ({
         day_of_week: avail.day_of_week,
         start_time: avail.start_time,
         end_time: avail.end_time
@@ -126,21 +134,21 @@ const HrConsultantManagement = () => {
     setShowEditModal(true);
   };
 
-  const handleDelete = async (consultantId) => {
-    if (window.confirm('Are you sure you want to delete this consultant? All scheduled appointments will be cancelled.')) {
+  const handleDelete = async (psychiatristId) => {
+    if (window.confirm('Are you sure you want to delete this psychiatrist? All scheduled appointments will be cancelled.')) {
       try {
-        await apiService.deleteConsultant(consultantId);
-        showSuccess('Consultant deleted successfully');
-        fetchConsultants();
+        await apiService.deletePsychiatrist(psychiatristId);
+        showSuccess('Psychiatrist deleted successfully');
+        fetchPsychiatrists();
       } catch (error) {
-        showError('Failed to delete consultant');
+        showError('Failed to delete psychiatrist');
       }
     }
   };
 
-  const handleViewBookings = async (consultant) => {
-    setSelectedConsultant(consultant);
-    await fetchConsultantBookings(consultant.id);
+  const handleViewBookings = async (psychiatrist) => {
+    setSelectedPsychiatrist(psychiatrist);
+    await fetchPsychiatristBookings(psychiatrist.id);
     setShowBookingsModal(true);
   };
 
@@ -153,7 +161,7 @@ const HrConsultantManagement = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading consultants...</p>
+          <p className="mt-4 text-gray-600">Loading psychiatrists...</p>
         </div>
       </div>
     );
@@ -164,33 +172,33 @@ const HrConsultantManagement = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Consultant Management</h1>
-          <p className="text-gray-600 mt-2">Manage consultants and their availability</p>
+          <h1 className="text-3xl font-bold text-gray-900">Psychiatrist Management</h1>
+          <p className="text-gray-600 mt-2">Manage psychiatrists and their availability</p>
         </div>
 
-        {/* Add Consultant Button */}
+        {/* Add Psychiatrist Button */}
         <div className="mb-6">
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => setShowModal(true)}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Add New Consultant
+            Add New Psychiatrist
           </button>
         </div>
 
-        {/* Consultants List */}
+        {/* Psychiatrists List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {consultants.map((consultant) => (
-            <div key={consultant.id} className="bg-white rounded-lg shadow-md p-6">
+          {psychiatrists.map((psychiatrist) => (
+            <div key={psychiatrist.id} className="bg-white rounded-lg shadow-md p-6">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{consultant.name}</h3>
-                  <p className="text-sm text-gray-600">{consultant.specialization}</p>
-                  <p className="text-sm text-gray-600">{consultant.hospital}</p>
+                  <h3 className="text-lg font-semibold text-gray-900">{psychiatrist.name}</h3>
+                  <p className="text-sm text-gray-600">{psychiatrist.specialization}</p>
+                  <p className="text-sm text-gray-600">{psychiatrist.hospital}</p>
                 </div>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => handleViewBookings(consultant)}
+                    onClick={() => handleViewBookings(psychiatrist)}
                     className="text-blue-600 hover:text-blue-800 text-sm"
                   >
                     View Bookings
@@ -200,17 +208,17 @@ const HrConsultantManagement = () => {
 
               <div className="mb-4">
                 <p className="text-sm text-gray-700 mb-2">
-                  <strong>Qualifications:</strong> {consultant.qualifications}
+                  <strong>Qualifications:</strong> {psychiatrist.qualifications}
                 </p>
                 <p className="text-sm text-gray-700">
-                  <strong>Registration:</strong> {consultant.registration_number}
+                  <strong>Registration:</strong> {psychiatrist.registration_number}
                 </p>
               </div>
 
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-gray-900 mb-2">Availability:</h4>
                 <div className="space-y-1">
-                  {consultant.availabilities.map((availability, index) => (
+                  {psychiatrist.availabilities.map((availability, index) => (
                     <div key={index} className="text-xs text-gray-600">
                       {getDayName(availability.day_of_week)}: {availability.start_time} - {availability.end_time}
                     </div>
@@ -220,13 +228,13 @@ const HrConsultantManagement = () => {
 
               <div className="flex space-x-2">
                 <button
-                  onClick={() => handleEdit(consultant)}
+                  onClick={() => handleEdit(psychiatrist)}
                   className="flex-1 bg-yellow-600 text-white px-3 py-2 rounded-lg hover:bg-yellow-700 transition-colors text-sm"
                 >
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(consultant.id)}
+                  onClick={() => handleDelete(psychiatrist.id)}
                   className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
                 >
                   Delete
@@ -236,20 +244,20 @@ const HrConsultantManagement = () => {
           ))}
         </div>
 
-        {consultants.length === 0 && (
+        {psychiatrists.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No consultants found. Add your first consultant to get started.</p>
+            <p className="text-gray-500">No psychiatrists found. Add your first psychiatrist to get started.</p>
           </div>
         )}
       </div>
 
-      {/* Add/Edit Consultant Modal */}
-      {(showAddModal || showEditModal) && (
+      {/* Add/Edit Psychiatrist Modal */}
+      {(showModal || showEditModal) && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                {showEditModal ? 'Edit Consultant' : 'Add New Consultant'}
+                {showEditModal ? 'Edit Psychiatrist' : 'Add New Psychiatrist'}
               </h3>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -363,12 +371,12 @@ const HrConsultantManagement = () => {
                     type="submit"
                     className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    {showEditModal ? 'Update Consultant' : 'Add Consultant'}
+                    {showEditModal ? 'Update Psychiatrist' : 'Add Psychiatrist'}
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      setShowAddModal(false);
+                      setShowModal(false);
                       setShowEditModal(false);
                       setFormData({
                         name: '',
@@ -376,9 +384,11 @@ const HrConsultantManagement = () => {
                         registration_number: '',
                         hospital: '',
                         specialization: '',
+                        username: '',
+                        password: '',
                         availabilities: []
                       });
-                      setSelectedConsultant(null);
+                      setSelectedPsychiatrist(null);
                     }}
                     className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
                   >
@@ -391,13 +401,13 @@ const HrConsultantManagement = () => {
         </div>
       )}
 
-      {/* Consultant Bookings Modal */}
-      {showBookingsModal && selectedConsultant && (
+      {/* Psychiatrist Bookings Modal */}
+      {showBookingsModal && selectedPsychiatrist && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Bookings for {selectedConsultant.name}
+                Bookings for {selectedPsychiatrist.name}
               </h3>
               
               <div className="overflow-x-auto">
@@ -425,7 +435,7 @@ const HrConsultantManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {consultantBookings.map((booking) => (
+                    {psychiatristBookings.map((booking) => (
                       <tr key={booking.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {booking.employee_name}
@@ -458,9 +468,9 @@ const HrConsultantManagement = () => {
                 </table>
               </div>
 
-              {consultantBookings.length === 0 && (
+              {psychiatristBookings.length === 0 && (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">No bookings found for this consultant.</p>
+                  <p className="text-gray-500">No bookings found for this psychiatrist.</p>
                 </div>
               )}
 
@@ -468,8 +478,8 @@ const HrConsultantManagement = () => {
                 <button
                   onClick={() => {
                     setShowBookingsModal(false);
-                    setSelectedConsultant(null);
-                    setConsultantBookings([]);
+                    setSelectedPsychiatrist(null);
+                    setPsychiatristBookings([]);
                   }}
                   className="bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
                 >
@@ -484,4 +494,4 @@ const HrConsultantManagement = () => {
   );
 };
 
-export default HrConsultantManagement; 
+export default HrPsychiatristManagement; 
