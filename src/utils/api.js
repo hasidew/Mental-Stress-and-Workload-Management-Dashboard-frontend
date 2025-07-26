@@ -386,31 +386,54 @@ class ApiService {
 
   // Consultant management
   async createConsultantWithAvailability(consultantData) {
-    return await this.request('/admin/consultants/with-availability', {
+    // Use HR endpoint for HR managers, admin endpoint for admins
+    const userRole = this.getUserRole();
+    const endpoint = userRole === 'hr_manager' ? '/hr/consultants/with-availability' : '/admin/consultants/with-availability';
+    return await this.request(endpoint, {
       method: 'POST',
       body: JSON.stringify(consultantData),
     });
   }
 
   async getAllConsultants() {
-    return await this.request('/admin/consultants');
+    // Use HR endpoint for HR managers, admin endpoint for admins
+    const userRole = this.getUserRole();
+    const endpoint = userRole === 'hr_manager' ? '/hr/consultants' : '/admin/consultants';
+    return await this.request(endpoint);
   }
 
   async getConsultant(consultantId) {
-    return await this.request(`/admin/consultants/${consultantId}`);
+    // Use HR endpoint for HR managers, admin endpoint for admins
+    const userRole = this.getUserRole();
+    const endpoint = userRole === 'hr_manager' ? `/hr/consultants/${consultantId}` : `/admin/consultants/${consultantId}`;
+    return await this.request(endpoint);
   }
 
   async updateConsultant(consultantId, consultantData) {
-    return await this.request(`/admin/consultants/${consultantId}`, {
+    // Use HR endpoint for HR managers, admin endpoint for admins
+    const userRole = this.getUserRole();
+    const endpoint = userRole === 'hr_manager' ? `/hr/consultants/${consultantId}` : `/admin/consultants/${consultantId}`;
+    return await this.request(endpoint, {
       method: 'PUT',
       body: JSON.stringify(consultantData),
     });
   }
 
   async deleteConsultant(consultantId) {
-    return await this.request(`/admin/consultants/${consultantId}`, {
+    // Use HR endpoint for HR managers, admin endpoint for admins
+    const userRole = this.getUserRole();
+    const endpoint = userRole === 'hr_manager' ? `/hr/consultants/${consultantId}` : `/admin/consultants/${consultantId}`;
+    return await this.request(endpoint, {
       method: 'DELETE',
     });
+  }
+
+  async getConsultantBookings(consultantId) {
+    return await this.request(`/hr/consultants/${consultantId}/bookings`);
+  }
+
+  async getConsultantAvailableTimes(consultantId, date) {
+    return await this.request(`/hr/consultants/${consultantId}/available-times?date=${date}`);
   }
 
   // Admin registration
@@ -629,6 +652,17 @@ class ApiService {
   // Check if user is authenticated
   isAuthenticated() {
     return !!this.token;
+  }
+
+  getUserRole() {
+    if (!this.token) return null;
+    try {
+      const payload = JSON.parse(atob(this.token.split('.')[1]));
+      return payload.role;
+    } catch (error) {
+      console.error('Error parsing token:', error);
+      return null;
+    }
   }
 }
 

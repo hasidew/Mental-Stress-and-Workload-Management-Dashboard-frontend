@@ -16,51 +16,61 @@ const AdminDashboard = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-  const [showCreateConsultantModal, setShowCreateConsultantModal] = useState(false);
   const [showCreateDepartmentModal, setShowCreateDepartmentModal] = useState(false);
   const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [showEditDepartmentModal, setShowEditDepartmentModal] = useState(false);
   const [showEditTeamModal, setShowEditTeamModal] = useState(false);
-  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [editingDepartment, setEditingDepartment] = useState(null);
   const [editingTeam, setEditingTeam] = useState(null);
-  const [editingUser, setEditingUser] = useState(null);
-  const [showAssignSupervisorModal, setShowAssignSupervisorModal] = useState(false);
-  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
-  const [supervisorToAssign, setSupervisorToAssign] = useState({ teamId: null, userId: null });
   const [userToDelete, setUserToDelete] = useState(null);
   const [teamToDelete, setTeamToDelete] = useState(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  const [requests, setRequests] = useState([]);
+  const [showReviewRequestModal, setShowReviewRequestModal] = useState(false);
+  const [supervisorToAssign, setSupervisorToAssign] = useState({ teamId: null, userId: null });
+  const [showAssignSupervisorModal, setShowAssignSupervisorModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+
+  // Consultant-related state variables
   const [consultants, setConsultants] = useState([]);
+  const [showCreateConsultantModal, setShowCreateConsultantModal] = useState(false);
   const [showEditConsultantModal, setShowEditConsultantModal] = useState(false);
   const [editingConsultant, setEditingConsultant] = useState(null);
-  const [consultantToDelete, setConsultantToDelete] = useState(null);
-  const [registrationRequests, setRegistrationRequests] = useState([]);
-  const [showReviewRequestModal, setShowReviewRequestModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        
+        // Debug: Log current user info
+        console.log('Current user in AdminDashboard:', user);
+        console.log('User role:', user?.role);
+        console.log('User token:', user?.token ? 'Present' : 'Missing');
+        
         const data = await apiService.getAdminDashboard();
         setDashboardData(data);
         
         // Fetch all data
-        const [usersData, departmentsData, teamsData, consultantsData, requestsData] = await Promise.all([
+        const [usersData, departmentsData, teamsData, requestsData, consultantsData] = await Promise.all([
           apiService.getAllUsers(),
           apiService.getAllDepartments(),
           apiService.getAllTeams(),
-          apiService.getAllConsultants(),
-          apiService.getAllRegistrationRequests()
+          apiService.getAllRegistrationRequests(),
+          apiService.getAllConsultants()
         ]);
         
-        console.log('Loaded data:', { usersData, departmentsData, teamsData, consultantsData, requestsData });
+        console.log('Loaded data:', { usersData, departmentsData, teamsData, requestsData, consultantsData });
         
         setUsers(usersData);
         setDepartments(departmentsData);
         setTeams(teamsData);
+        setRequests(requestsData);
         setConsultants(consultantsData);
-        setRegistrationRequests(requestsData);
         
         setError(null);
       } catch (error) {
@@ -479,28 +489,19 @@ const AdminDashboard = () => {
               >
                 Teams
               </button>
+
               <button
-                onClick={() => setActiveTab('consultants')}
+                onClick={() => setActiveTab('requests')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'consultants'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Consultants
-              </button>
-              <button
-                onClick={() => setActiveTab('registration-requests')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'registration-requests'
+                  activeTab === 'requests'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 Registration Requests
-                {registrationRequests.filter(req => req.status === 'pending').length > 0 && (
+                {requests.filter(req => req.status === 'pending').length > 0 && (
                   <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                    {registrationRequests.filter(req => req.status === 'pending').length}
+                    {requests.filter(req => req.status === 'pending').length}
                   </span>
                 )}
               </button>
@@ -852,7 +853,7 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {activeTab === 'registration-requests' && (
+            {activeTab === 'requests' && (
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-[#212121]">Registration Requests</h3>
@@ -882,7 +883,7 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {registrationRequests.map((request) => (
+                      {requests.map((request) => (
                         <tr key={request.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {request.first_name} {request.last_name}
@@ -1011,21 +1012,6 @@ const AdminDashboard = () => {
             onSubmit={handleUpdateTeam}
             team={editingTeam}
             departments={departments}
-            users={users}
-          />
-        )}
-
-        {/* Edit User Modal */}
-        {showEditUserModal && editingUser && (
-          <EditUserModal
-            onClose={() => {
-              setShowEditUserModal(false);
-              setEditingUser(null);
-            }}
-            onSubmit={handleUpdateUser}
-            user={editingUser}
-            departments={departments}
-            teams={teams}
             users={users}
           />
         )}

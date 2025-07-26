@@ -93,10 +93,7 @@ const SignUp = () => {
       baseSchema.team = [(value) => validationRules.required(value, 'Team')];
     }
 
-    if (role === "Consultant") {
-      baseSchema.registrationNumber = [(value) => validationRules.required(value, 'Registration Number')];
-      baseSchema.hospital = [(value) => validationRules.required(value, 'Hospital')];
-    }
+
 
     return baseSchema;
   };
@@ -401,7 +398,6 @@ const SignUp = () => {
                   <option value="Employee">Employee</option>
                   <option value="Supervisor">Supervisor</option>
                   <option value="HR Manager">HR Manager</option>
-                  <option value="Consultant">Consultant</option>
                 </select>
                 {touched.jobRole && errors.jobRole && (
                   <p className="text-red-500 text-sm mt-1">{errors.jobRole}</p>
@@ -529,48 +525,7 @@ const SignUp = () => {
                 </div>
               )}
 
-              {role === "Consultant" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[#212121] font-medium mb-2">Registration Number <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
-                      name="registrationNumber" 
-                      required 
-                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                        touched.registrationNumber && errors.registrationNumber 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-200 focus:ring-blue-500'
-                      }`}
-                      placeholder="Enter registration number"
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.registrationNumber && errors.registrationNumber && (
-                      <p className="text-red-500 text-sm mt-1">{errors.registrationNumber}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-[#212121] font-medium mb-2">Hospital <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
-                      name="hospital" 
-                      required 
-                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                        touched.hospital && errors.hospital 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-200 focus:ring-blue-500'
-                      }`}
-                      placeholder="Enter hospital name"
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.hospital && errors.hospital && (
-                      <p className="text-red-500 text-sm mt-1">{errors.hospital}</p>
-                    )}
-                  </div>
-                </div>
-              )}
+
             </div>
 
             {/* Login Information */}

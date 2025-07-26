@@ -29,15 +29,29 @@ const Dashboard = () => {
           setLoading(true);
           const userRole = getUserRole();
           console.log('Current user role:', userRole);
+          console.log('User object:', user);
+          
+          // Temporary debug info
+          if (userRole === 'hr_manager') {
+            console.log('HR Manager detected - should redirect to /hr-dashboard');
+          } else if (userRole === 'admin') {
+            console.log('Admin detected - should redirect to /admin-dashboard');
+          } else {
+            console.log('Other role detected:', userRole);
+          }
           
           // Redirect admin users to admin dashboard
+          console.log('Checking admin redirect - userRole:', userRole);
           if (shouldRedirectToAdmin(userRole)) {
+            console.log('Redirecting admin to /admin-dashboard');
             navigate('/admin-dashboard');
             return;
           }
 
           // Redirect HR users to HR dashboard
+          console.log('Checking HR redirect - userRole:', userRole);
           if (userRole === 'hr_manager') {
+            console.log('Redirecting HR manager to /hr-dashboard');
             navigate('/hr-dashboard');
             return;
           }

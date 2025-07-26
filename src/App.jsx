@@ -9,6 +9,7 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import Dashboard from './pages/Dashboard'
 import HrDashboard from './pages/HrDashboard'
+import HrConsultantManagement from './pages/HrConsultantManagement'
 import StressScore from './pages/StressScore'
 import AiChat from './pages/AiChat'
 import Consultants from './pages/Consultants'
@@ -45,6 +46,11 @@ function App() {
               <Route path="hr-dashboard" element={
                 <ProtectedRoute>
                   <HrDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="hr-consultant-management" element={
+                <ProtectedRoute>
+                  <HrConsultantManagement />
                 </ProtectedRoute>
               } />
               <Route path="stress-score" element={

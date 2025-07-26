@@ -1,5 +1,37 @@
 import { createContext, useContext, useState } from 'react';
 
+// Add CSS animations for toast
+const toastStyles = `
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideOut {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = toastStyles;
+  document.head.appendChild(style);
+}
+
 const ToastContext = createContext();
 
 export const useToast = () => {
@@ -26,7 +58,15 @@ export const ToastProvider = ({ children }) => {
   };
 
   const removeToast = (id) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
+    const toastElement = document.querySelector(`[data-toast-id="${id}"]`);
+    if (toastElement) {
+      toastElement.style.animation = 'slideOut 0.3s ease-in-out';
+      setTimeout(() => {
+        setToasts(prev => prev.filter(toast => toast.id !== id));
+      }, 300);
+    } else {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }
   };
 
   const showError = (message) => addToast(message, 'error');
@@ -56,34 +96,34 @@ const ToastContainer = () => {
   const { toasts, removeToast } = useToast();
 
   const getToastStyles = (type) => {
-    const baseStyles = "fixed top-4 right-4 z-50 max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden";
+    const baseStyles = "fixed top-4 right-4 z-50 max-w-sm w-full bg-white shadow-lg rounded-2xl pointer-events-auto overflow-hidden border-2";
     
     switch (type) {
       case 'error':
-        return `${baseStyles} border-l-4 border-red-500`;
+        return `${baseStyles} border-red-500 bg-red-50`;
       case 'success':
-        return `${baseStyles} border-l-4 border-green-500`;
+        return `${baseStyles} border-green-500 bg-green-50`;
       case 'warning':
-        return `${baseStyles} border-l-4 border-yellow-500`;
+        return `${baseStyles} border-yellow-500 bg-yellow-50`;
       case 'info':
-        return `${baseStyles} border-l-4 border-blue-500`;
+        return `${baseStyles} border-blue-500 bg-blue-50`;
       default:
-        return baseStyles;
+        return `${baseStyles} border-gray-200`;
     }
   };
 
   const getIconStyles = (type) => {
     switch (type) {
       case 'error':
-        return "text-red-500";
+        return "text-red-600";
       case 'success':
-        return "text-green-500";
+        return "text-green-600";
       case 'warning':
-        return "text-yellow-500";
+        return "text-yellow-600";
       case 'info':
-        return "text-blue-500";
+        return "text-blue-600";
       default:
-        return "text-gray-500";
+        return "text-[#4F4F4F]";
     }
   };
 
@@ -119,28 +159,29 @@ const ToastContainer = () => {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed top-6 right-6 z-50 space-y-3">
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`${getToastStyles(toast.type)} transform transition-all duration-300 ease-in-out`}
+          data-toast-id={toast.id}
+          className={`${getToastStyles(toast.type)} transform transition-all duration-300 ease-in-out hover:shadow-xl`}
           style={{
             animation: 'slideIn 0.3s ease-out',
           }}
         >
-          <div className="p-4">
+          <div className="p-6">
             <div className="flex items-start">
               <div className={`flex-shrink-0 ${getIconStyles(toast.type)}`}>
                 {getIcon(toast.type)}
               </div>
-              <div className="ml-3 w-0 flex-1 pt-0.5">
-                <p className="text-sm font-medium text-gray-900">
+              <div className="ml-4 w-0 flex-1 pt-0.5">
+                <p className="text-sm font-semibold text-[#212121]">
                   {toast.message}
                 </p>
               </div>
               <div className="ml-4 flex-shrink-0 flex">
                 <button
-                  className="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="bg-white rounded-xl inline-flex text-[#4F4F4F] hover:text-[#212121] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
                   onClick={() => removeToast(toast.id)}
                 >
                   <span className="sr-only">Close</span>

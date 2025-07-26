@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import apiService from '../utils/api';
 import { useToast } from '../contexts/ToastContext';
+import { validateForm, validationRules } from '../utils/validation';
 
 const HrDashboard = () => {
   const { getUserRole } = useAuth();
@@ -10,17 +11,25 @@ const HrDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const [showWorkloadModal, setShowWorkloadModal] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [workloadForm, setWorkloadForm] = useState({ description: '', date: '' });
   const [bookingForm, setBookingForm] = useState({
     consultant_id: '',
     booking_date: '',
     booking_time: '',
-    duration_minutes: 60,
+    duration_minutes: 30,
     notes: ''
   });
+  const [availableTimes, setAvailableTimes] = useState([]);
+  const [loadingTimes, setLoadingTimes] = useState(false);
+  
+  // Consultant management state
+  const [consultants, setConsultants] = useState([]);
+  const [showCreateConsultantModal, setShowCreateConsultantModal] = useState(false);
+  const [showEditConsultantModal, setShowEditConsultantModal] = useState(false);
+  const [editingConsultant, setEditingConsultant] = useState(null);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [consultantToDelete, setConsultantToDelete] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -29,8 +38,12 @@ const HrDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const data = await apiService.getHrDashboard();
+      const [data, consultantsData] = await Promise.all([
+        apiService.getHrDashboard(),
+        apiService.getAllConsultants()
+      ]);
       setDashboardData(data);
+      setConsultants(consultantsData);
     } catch (error) {
       showError('Failed to load dashboard data');
       console.error('Error fetching dashboard data:', error);
@@ -39,22 +52,7 @@ const HrDashboard = () => {
     }
   };
 
-  const handleAddWorkload = async (e) => {
-    e.preventDefault();
-    try {
-      const workloadData = {
-        description: workloadForm.description,
-        date: new Date(workloadForm.date).toISOString()
-      };
-      await apiService.addHrWorkload(workloadData);
-      showSuccess('Workload added successfully');
-      setShowWorkloadModal(false);
-      setWorkloadForm({ description: '', date: '' });
-      fetchDashboardData();
-    } catch (error) {
-      showError('Failed to add workload');
-    }
-  };
+
 
   const handleBookConsultant = async (e) => {
     e.preventDefault();
@@ -75,11 +73,12 @@ const HrDashboard = () => {
       }
 
       setShowBookingModal(false);
+      setAvailableTimes([]);
       setBookingForm({
         consultant_id: '',
         booking_date: '',
         booking_time: '',
-        duration_minutes: 60,
+        duration_minutes: 30,
         notes: ''
       });
       setSelectedEmployee(null);
@@ -93,6 +92,114 @@ const HrDashboard = () => {
     if (score <= 13) return { level: 'Low', color: 'text-green-600', bg: 'bg-green-100' };
     if (score <= 26) return { level: 'Medium', color: 'text-yellow-600', bg: 'bg-yellow-100' };
     return { level: 'High', color: 'text-red-600', bg: 'bg-red-100' };
+  };
+
+  const fetchAvailableTimes = async (consultantId, date) => {
+    if (!consultantId || !date) {
+      setAvailableTimes([]);
+      return;
+    }
+
+    try {
+      setLoadingTimes(true);
+      const response = await apiService.getConsultantAvailableTimes(consultantId, date);
+      setAvailableTimes(response.available_times || []);
+    } catch (error) {
+      console.error('Error fetching available times:', error);
+      setAvailableTimes([]);
+    } finally {
+      setLoadingTimes(false);
+    }
+  };
+
+  const handleBookingFormChange = (field, value) => {
+    setBookingForm(prev => ({ ...prev, [field]: value }));
+    
+    // Fetch available times when consultant or date changes
+    if (field === 'consultant_id' || field === 'booking_date') {
+      const consultantId = field === 'consultant_id' ? value : bookingForm.consultant_id;
+      const date = field === 'booking_date' ? value : bookingForm.booking_date;
+      
+      if (consultantId && date) {
+        fetchAvailableTimes(consultantId, date);
+      } else {
+        setAvailableTimes([]);
+      }
+    }
+  };
+
+  // Consultant management functions
+  const handleCreateConsultant = async (consultantData) => {
+    try {
+      await apiService.createConsultantWithAvailability(consultantData);
+      showSuccess('Consultant created successfully!');
+      setShowCreateConsultantModal(false);
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      showError(error.message || 'Failed to create consultant');
+    }
+  };
+
+  const handleUpdateConsultant = async (consultantData) => {
+    try {
+      await apiService.updateConsultant(editingConsultant.id, consultantData);
+      showSuccess('Consultant updated successfully!');
+      setShowEditConsultantModal(false);
+      setEditingConsultant(null);
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      showError(error.message || 'Failed to update consultant');
+    }
+  };
+
+  const handleDeleteConsultant = async (consultantId) => {
+    setConsultantToDelete(consultantId);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDeleteConsultant = async () => {
+    try {
+      await apiService.deleteConsultant(consultantToDelete);
+      showSuccess('Consultant deleted successfully!');
+      setShowDeleteConfirmModal(false);
+      setConsultantToDelete(null);
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      showError(error.message || 'Failed to delete consultant');
+    }
+  };
+
+  const handleEditConsultant = (consultant) => {
+    setEditingConsultant(consultant);
+    setShowEditConsultantModal(true);
+  };
+
+  // Function to check for overlapping time slots
+  const hasOverlappingTimeSlots = (availabilities) => {
+    const timeSlots = availabilities.map(av => ({
+      day: av.day_of_week,
+      start: av.start_time,
+      end: av.end_time
+    }));
+
+    for (let i = 0; i < timeSlots.length; i++) {
+      for (let j = i + 1; j < timeSlots.length; j++) {
+        const slot1 = timeSlots[i];
+        const slot2 = timeSlots[j];
+        
+        if (slot1.day === slot2.day) {
+          const start1 = new Date(`2000-01-01T${slot1.start}`);
+          const end1 = new Date(`2000-01-01T${slot1.end}`);
+          const start2 = new Date(`2000-01-01T${slot2.start}`);
+          const end2 = new Date(`2000-01-01T${slot2.end}`);
+          
+          if (start1 < end2 && start2 < end1) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   };
 
   if (loading) {
@@ -190,9 +297,9 @@ const HrDashboard = () => {
             <nav className="-mb-px flex space-x-8 px-6">
               {[
                 { id: 'overview', name: 'Overview', icon: '📊' },
-                { id: 'stress-scores', name: 'Stress Scores', icon: '📈' },
-                { id: 'workloads', name: 'Workloads', icon: '📋' },
-                { id: 'consultants', name: 'Consultants', icon: '👨‍⚕️' }
+                { id: 'stress-scores', name: 'Shared Stress Scores', icon: '📈' },
+                { id: 'consultants', name: 'Consultants', icon: '👨‍⚕️' },
+                { id: 'consultant-management', name: 'Manage Consultants', icon: '⚙️' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -252,12 +359,6 @@ const HrDashboard = () => {
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                     <div className="space-y-3">
                       <button
-                        onClick={() => setShowWorkloadModal(true)}
-                        className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        Add Daily Workload
-                      </button>
-                      <button
                         onClick={() => setShowBookingModal(true)}
                         className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
                       >
@@ -269,6 +370,7 @@ const HrDashboard = () => {
                       >
                         View Available Consultants
                       </Link>
+
                     </div>
                   </div>
 
@@ -302,7 +404,7 @@ const HrDashboard = () => {
             {activeTab === 'stress-scores' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Stress Scores Shared with HR</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Shared Stress Scores</h3>
                   <button
                     onClick={() => setShowBookingModal(true)}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
@@ -361,41 +463,7 @@ const HrDashboard = () => {
               </div>
             )}
 
-            {/* Workloads Tab */}
-            {activeTab === 'workloads' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">My Workloads</h3>
-                  <button
-                    onClick={() => setShowWorkloadModal(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Add Workload
-                  </button>
-                </div>
 
-                {dashboardData.hr_workloads.length > 0 ? (
-                  <div className="space-y-4">
-                    {dashboardData.hr_workloads.map((workload) => (
-                      <div key={workload.id} className="bg-white border rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-gray-900">{workload.description}</p>
-                            <p className="text-sm text-gray-600">
-                              {new Date(workload.date).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600">No workloads logged yet.</p>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Consultants Tab */}
             {activeTab === 'consultants' && (
@@ -466,57 +534,88 @@ const HrDashboard = () => {
                 </div>
               </div>
             )}
+
+            {/* Consultant Management Tab */}
+            {activeTab === 'consultant-management' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-gray-900">Manage Consultants</h3>
+                  <button
+                    onClick={() => setShowCreateConsultantModal(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Add Consultant
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Qualifications
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Registration Number
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Hospital
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Specialization
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {consultants.map((consultant) => (
+                        <tr key={consultant.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {consultant.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {consultant.qualifications}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {consultant.registration_number}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {consultant.hospital}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {consultant.specialization}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => handleEditConsultant(consultant)}
+                              className="text-blue-600 hover:text-blue-900 mr-3"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteConsultant(consultant.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Add Workload Modal */}
-      {showWorkloadModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Daily Workload</h3>
-              <form onSubmit={handleAddWorkload} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <textarea
-                    value={workloadForm.description}
-                    onChange={(e) => setWorkloadForm({ ...workloadForm, description: e.target.value })}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows="3"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                  <input
-                    type="date"
-                    value={workloadForm.date}
-                    onChange={(e) => setWorkloadForm({ ...workloadForm, date: e.target.value })}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div className="flex space-x-3">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Add Workload
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowWorkloadModal(false)}
-                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Book Consultant Modal */}
       {showBookingModal && (
@@ -531,7 +630,7 @@ const HrDashboard = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Consultant</label>
                   <select
                     value={bookingForm.consultant_id}
-                    onChange={(e) => setBookingForm({ ...bookingForm, consultant_id: e.target.value })}
+                    onChange={(e) => handleBookingFormChange('consultant_id', e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   >
@@ -548,32 +647,42 @@ const HrDashboard = () => {
                   <input
                     type="date"
                     value={bookingForm.booking_date}
-                    onChange={(e) => setBookingForm({ ...bookingForm, booking_date: e.target.value })}
+                    onChange={(e) => handleBookingFormChange('booking_date', e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
-                  <input
-                    type="time"
+                  <select
                     value={bookingForm.booking_time}
                     onChange={(e) => setBookingForm({ ...bookingForm, booking_time: e.target.value })}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
-                  />
+                    disabled={loadingTimes}
+                  >
+                    <option value="">
+                      {loadingTimes ? 'Loading available times...' : 'Select a time'}
+                    </option>
+                    {availableTimes.map((timeSlot) => (
+                      <option key={timeSlot.display} value={timeSlot.start_time}>
+                        {timeSlot.display}
+                      </option>
+                    ))}
+                  </select>
+                  {availableTimes.length === 0 && bookingForm.consultant_id && bookingForm.booking_date && !loadingTimes && (
+                    <p className="text-sm text-red-600 mt-1">No available times for this consultant on the selected date</p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Duration (minutes)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
                   <input
-                    type="number"
-                    value={bookingForm.duration_minutes}
-                    onChange={(e) => setBookingForm({ ...bookingForm, duration_minutes: parseInt(e.target.value) })}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    min="30"
-                    max="180"
-                    required
+                    type="text"
+                    value="30 minutes"
+                    className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100"
+                    disabled
                   />
+                  <p className="text-xs text-gray-500 mt-1">Session duration is fixed at 30 minutes</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
@@ -596,6 +705,14 @@ const HrDashboard = () => {
                     onClick={() => {
                       setShowBookingModal(false);
                       setSelectedEmployee(null);
+                      setAvailableTimes([]);
+                      setBookingForm({
+                        consultant_id: '',
+                        booking_date: '',
+                        booking_time: '',
+                        duration_minutes: 30,
+                        notes: ''
+                      });
                     }}
                     className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
                   >
@@ -607,6 +724,837 @@ const HrDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Create Consultant Modal */}
+      {showCreateConsultantModal && (
+        <CreateConsultantModal
+          onClose={() => setShowCreateConsultantModal(false)}
+          onSubmit={handleCreateConsultant}
+        />
+      )}
+
+      {/* Edit Consultant Modal */}
+      {showEditConsultantModal && editingConsultant && (
+        <EditConsultantModal
+          onClose={() => {
+            setShowEditConsultantModal(false);
+            setEditingConsultant(null);
+          }}
+          onSubmit={handleUpdateConsultant}
+          consultant={editingConsultant}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Consultant</h3>
+              <p className="text-gray-600 mb-6">Are you sure you want to delete this consultant? This action cannot be undone.</p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={confirmDeleteConsultant}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirmModal(false);
+                    setConsultantToDelete(null);
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Create Consultant Modal Component
+const CreateConsultantModal = ({ onClose, onSubmit }) => {
+  const { showError } = useToast();
+  const [formData, setFormData] = useState({
+    name: '',
+    qualifications: '',
+    registration_number: '',
+    hospital: '',
+    specialization: '',
+    username: '',
+    password: '',
+    availabilities: []
+  });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const daysOfWeek = [
+    { value: 0, label: 'Monday' },
+    { value: 1, label: 'Tuesday' },
+    { value: 2, label: 'Wednesday' },
+    { value: 3, label: 'Thursday' },
+    { value: 4, label: 'Friday' },
+    { value: 5, label: 'Saturday' },
+    { value: 6, label: 'Sunday' }
+  ];
+
+  // Validation schema for consultant creation
+  const validationSchema = {
+    name: [validationRules.required, validationRules.name],
+    qualifications: [validationRules.required, (value) => validationRules.textLength(value, 'Qualifications', 2, 200)],
+    registration_number: [validationRules.required, (value) => validationRules.textLength(value, 'Registration Number', 3, 50)],
+    hospital: [validationRules.required, (value) => validationRules.textLength(value, 'Hospital', 2, 100)],
+    specialization: [validationRules.required, (value) => validationRules.textLength(value, 'Specialization', 2, 100)],
+    username: [validationRules.required, validationRules.email],
+    password: [validationRules.required, validationRules.password]
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    
+    if (validationSchema[name]) {
+      const fieldErrors = validateForm({ [name]: value }, { [name]: validationSchema[name] });
+      if (fieldErrors[name]) {
+        setErrors(prev => ({ ...prev, [name]: fieldErrors[name] }));
+      }
+    }
+  };
+
+  const addAvailability = () => {
+    setFormData(prev => ({
+      ...prev,
+      availabilities: [...prev.availabilities, { day_of_week: 0, start_time: '09:00', end_time: '17:00', is_available: true }]
+    }));
+  };
+
+  const removeAvailability = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      availabilities: prev.availabilities.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateAvailability = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      availabilities: prev.availabilities.map((availability, i) => 
+        i === index ? { ...availability, [field]: value } : availability
+      )
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    setTouched({ name: true, qualifications: true, registration_number: true, hospital: true, specialization: true });
+    
+    const formErrors = validateForm(formData, validationSchema);
+    setErrors(formErrors);
+    
+    if (Object.keys(formErrors).length > 0) {
+      showError("Please fix the errors in the form");
+      return;
+    }
+
+    // Check for overlapping time slots
+    const timeSlots = formData.availabilities.map(av => ({
+      day: av.day_of_week,
+      start: av.start_time,
+      end: av.end_time
+    }));
+
+    for (let i = 0; i < timeSlots.length; i++) {
+      for (let j = i + 1; j < timeSlots.length; j++) {
+        const slot1 = timeSlots[i];
+        const slot2 = timeSlots[j];
+        
+        if (slot1.day === slot2.day) {
+          const start1 = new Date(`2000-01-01T${slot1.start}`);
+          const end1 = new Date(`2000-01-01T${slot1.end}`);
+          const start2 = new Date(`2000-01-01T${slot2.start}`);
+          const end2 = new Date(`2000-01-01T${slot2.end}`);
+          
+          if (start1 < end2 && start2 < end1) {
+            showError('Overlapping time slots detected. Please fix the availability schedule.');
+            return;
+          }
+        }
+      }
+    }
+    
+    try {
+      setIsSubmitting(true);
+      await onSubmit(formData);
+    } catch (error) {
+      showError(error.message || 'Failed to create consultant');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-semibold text-[#212121] flex items-center">
+            <span className="mr-2">👨‍⚕️</span>
+            Add New Consultant
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-xl"
+          >
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
+            <h4 className="text-lg font-semibold text-[#212121] mb-4 flex items-center">
+              <span className="mr-2">📋</span>
+              Basic Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Full Name <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.name && errors.name 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="Enter consultant's full name"
+                />
+                {touched.name && errors.name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Qualifications <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  name="qualifications"
+                  value={formData.qualifications}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.qualifications && errors.qualifications 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="e.g., MBBS, MD Psychiatry"
+                />
+                {touched.qualifications && errors.qualifications && (
+                  <p className="text-red-500 text-sm mt-1">{errors.qualifications}</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Registration Number <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  name="registration_number"
+                  value={formData.registration_number}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.registration_number && errors.registration_number 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="Enter registration number"
+                />
+                {touched.registration_number && errors.registration_number && (
+                  <p className="text-red-500 text-sm mt-1">{errors.registration_number}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Hospital <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  name="hospital"
+                  value={formData.hospital}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.hospital && errors.hospital 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="Enter hospital name"
+                />
+                {touched.hospital && errors.hospital && (
+                  <p className="text-red-500 text-sm mt-1">{errors.hospital}</p>
+                )}
+              </div>
+            </div>
+            <div className="mt-4">
+              <label className="block text-[#212121] font-medium mb-2">Specialization <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                name="specialization"
+                value={formData.specialization}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                  touched.specialization && errors.specialization 
+                    ? 'border-red-500 focus:ring-red-500' 
+                    : 'border-gray-200 focus:ring-blue-500'
+                }`}
+                placeholder="e.g., Clinical Psychology, Psychiatry"
+              />
+              {touched.specialization && errors.specialization && (
+                <p className="text-red-500 text-sm mt-1">{errors.specialization}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Login Information */}
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl p-6 border border-yellow-100">
+            <h4 className="text-lg font-semibold text-[#212121] mb-4 flex items-center">
+              <span className="mr-2">🔐</span>
+              Login Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Email Address <span className="text-red-500">*</span></label>
+                <input
+                  type="email"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.username && errors.username 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="Enter email address"
+                />
+                {touched.username && errors.username && (
+                  <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Password <span className="text-red-500">*</span></label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  minLength="8"
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.password && errors.password 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="Enter password (min 8 characters)"
+                />
+                {touched.password && errors.password && (
+                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Availability Schedule */}
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl p-6 border border-green-100">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-semibold text-[#212121] flex items-center">
+                <span className="mr-2">📅</span>
+                Availability Schedule
+              </h4>
+              <button
+                type="button"
+                onClick={addAvailability}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Add Time Slot
+              </button>
+            </div>
+            {formData.availabilities.length === 0 && (
+              <p className="text-gray-600 text-center py-4">No availability slots added yet. Click "Add Time Slot" to begin.</p>
+            )}
+            {formData.availabilities.map((availability, index) => (
+              <div key={index} className="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-[#212121] font-medium mb-2">Day</label>
+                    <select
+                      value={availability.day_of_week}
+                      onChange={(e) => updateAvailability(index, 'day_of_week', parseInt(e.target.value))}
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    >
+                      {daysOfWeek.map(day => (
+                        <option key={day.value} value={day.value}>{day.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#212121] font-medium mb-2">Start Time</label>
+                    <input
+                      type="time"
+                      value={availability.start_time}
+                      onChange={(e) => updateAvailability(index, 'start_time', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#212121] font-medium mb-2">End Time</label>
+                    <input
+                      type="time"
+                      value={availability.end_time}
+                      onChange={(e) => updateAvailability(index, 'end_time', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={() => removeAvailability(index)}
+                      className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex space-x-4">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Creating...' : 'Create Consultant'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-400 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Edit Consultant Modal Component
+const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
+  const { showError } = useToast();
+  const [formData, setFormData] = useState({
+    name: consultant.name || '',
+    qualifications: consultant.qualifications || '',
+    registration_number: consultant.registration_number || '',
+    hospital: consultant.hospital || '',
+    specialization: consultant.specialization || '',
+    username: consultant.username || '',
+    password: '',
+    availabilities: consultant.availabilities || []
+  });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const daysOfWeek = [
+    { value: 0, label: 'Monday' },
+    { value: 1, label: 'Tuesday' },
+    { value: 2, label: 'Wednesday' },
+    { value: 3, label: 'Thursday' },
+    { value: 4, label: 'Friday' },
+    { value: 5, label: 'Saturday' },
+    { value: 6, label: 'Sunday' }
+  ];
+
+  // Validation schema for consultant editing
+  const validationSchema = {
+    name: [validationRules.required, validationRules.name],
+    qualifications: [validationRules.required, (value) => validationRules.textLength(value, 'Qualifications', 2, 200)],
+    registration_number: [validationRules.required, (value) => validationRules.textLength(value, 'Registration Number', 3, 50)],
+    hospital: [validationRules.required, (value) => validationRules.textLength(value, 'Hospital', 2, 100)],
+    specialization: [validationRules.required, (value) => validationRules.textLength(value, 'Specialization', 2, 100)],
+    username: [validationRules.required, validationRules.email],
+    password: [validationRules.required, validationRules.password]
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    
+    if (validationSchema[name]) {
+      const fieldErrors = validateForm({ [name]: value }, { [name]: validationSchema[name] });
+      if (fieldErrors[name]) {
+        setErrors(prev => ({ ...prev, [name]: fieldErrors[name] }));
+      }
+    }
+  };
+
+  const addAvailability = () => {
+    setFormData(prev => ({
+      ...prev,
+      availabilities: [...prev.availabilities, { day_of_week: 0, start_time: '09:00', end_time: '17:00', is_available: true }]
+    }));
+  };
+
+  const removeAvailability = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      availabilities: prev.availabilities.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateAvailability = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      availabilities: prev.availabilities.map((availability, i) => 
+        i === index ? { ...availability, [field]: value } : availability
+      )
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    setTouched({ name: true, qualifications: true, registration_number: true, hospital: true, specialization: true });
+    
+    const formErrors = validateForm(formData, validationSchema);
+    setErrors(formErrors);
+    
+    if (Object.keys(formErrors).length > 0) {
+      showError("Please fix the errors in the form");
+      return;
+    }
+
+    // Check for overlapping time slots
+    const timeSlots = formData.availabilities.map(av => ({
+      day: av.day_of_week,
+      start: av.start_time,
+      end: av.end_time
+    }));
+
+    for (let i = 0; i < timeSlots.length; i++) {
+      for (let j = i + 1; j < timeSlots.length; j++) {
+        const slot1 = timeSlots[i];
+        const slot2 = timeSlots[j];
+        
+        if (slot1.day === slot2.day) {
+          const start1 = new Date(`2000-01-01T${slot1.start}`);
+          const end1 = new Date(`2000-01-01T${slot1.end}`);
+          const start2 = new Date(`2000-01-01T${slot2.start}`);
+          const end2 = new Date(`2000-01-01T${slot2.end}`);
+          
+          if (start1 < end2 && start2 < end1) {
+            showError('Overlapping time slots detected. Please fix the availability schedule.');
+            return;
+          }
+        }
+      }
+    }
+    
+    try {
+      setIsSubmitting(true);
+      await onSubmit(formData);
+    } catch (error) {
+      showError(error.message || 'Failed to update consultant');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+    return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-semibold text-[#212121] flex items-center">
+            <span className="mr-2">✏️</span>
+            Edit Consultant
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-xl"
+          >
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
+            <h4 className="text-lg font-semibold text-[#212121] mb-4 flex items-center">
+              <span className="mr-2">📋</span>
+              Basic Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Full Name <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.name && errors.name 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="Enter consultant's full name"
+                />
+                {touched.name && errors.name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Qualifications <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  name="qualifications"
+                  value={formData.qualifications}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.qualifications && errors.qualifications 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="e.g., MBBS, MD Psychiatry"
+                />
+                {touched.qualifications && errors.qualifications && (
+                  <p className="text-red-500 text-sm mt-1">{errors.qualifications}</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Registration Number <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  name="registration_number"
+                  value={formData.registration_number}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.registration_number && errors.registration_number 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="Enter registration number"
+                />
+                {touched.registration_number && errors.registration_number && (
+                  <p className="text-red-500 text-sm mt-1">{errors.registration_number}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Hospital <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  name="hospital"
+                  value={formData.hospital}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.hospital && errors.hospital 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="Enter hospital name"
+                />
+                {touched.hospital && errors.hospital && (
+                  <p className="text-red-500 text-sm mt-1">{errors.hospital}</p>
+                )}
+              </div>
+            </div>
+            <div className="mt-4">
+              <label className="block text-[#212121] font-medium mb-2">Specialization <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                name="specialization"
+                value={formData.specialization}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                  touched.specialization && errors.specialization 
+                    ? 'border-red-500 focus:ring-red-500' 
+                    : 'border-gray-200 focus:ring-blue-500'
+                }`}
+                placeholder="e.g., Clinical Psychology, Psychiatry"
+              />
+              {touched.specialization && errors.specialization && (
+                <p className="text-red-500 text-sm mt-1">{errors.specialization}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Login Information */}
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl p-6 border border-yellow-100">
+            <h4 className="text-lg font-semibold text-[#212121] mb-4 flex items-center">
+              <span className="mr-2">🔐</span>
+              Login Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Email Address <span className="text-red-500">*</span></label>
+                <input
+                  type="email"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.username && errors.username 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="Enter email address"
+                />
+                {touched.username && errors.username && (
+                  <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-[#212121] font-medium mb-2">Password <span className="text-red-500">*</span></label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  minLength="8"
+                  className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    touched.password && errors.password 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-blue-500'
+                  }`}
+                  placeholder="Enter new password (min 8 characters)"
+                />
+                {touched.password && errors.password && (
+                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Availability Schedule */}
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl p-6 border border-green-100">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-semibold text-[#212121] flex items-center">
+                <span className="mr-2">📅</span>
+                Availability Schedule
+              </h4>
+              <button
+                type="button"
+                onClick={addAvailability}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Add Time Slot
+              </button>
+            </div>
+            {formData.availabilities.length === 0 && (
+              <p className="text-gray-600 text-center py-4">No availability slots added yet. Click "Add Time Slot" to begin.</p>
+            )}
+            {formData.availabilities.map((availability, index) => (
+              <div key={index} className="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-[#212121] font-medium mb-2">Day</label>
+                    <select
+                      value={availability.day_of_week}
+                      onChange={(e) => updateAvailability(index, 'day_of_week', parseInt(e.target.value))}
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    >
+                      {daysOfWeek.map(day => (
+                        <option key={day.value} value={day.value}>{day.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#212121] font-medium mb-2">Start Time</label>
+                    <input
+                      type="time"
+                      value={availability.start_time}
+                      onChange={(e) => updateAvailability(index, 'start_time', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#212121] font-medium mb-2">End Time</label>
+                    <input
+                      type="time"
+                      value={availability.end_time}
+                      onChange={(e) => updateAvailability(index, 'end_time', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={() => removeAvailability(index)}
+                      className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex space-x-4">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Updating...' : 'Update Consultant'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-400 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
