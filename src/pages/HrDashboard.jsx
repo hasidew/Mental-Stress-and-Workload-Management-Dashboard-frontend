@@ -1,20 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import apiService from '../utils/api';
 import { useToast } from '../contexts/ToastContext';
 import { validateForm, validationRules } from '../utils/validation';
 
 const HrDashboard = () => {
-  const { getUserRole } = useAuth();
   const { showError, showSuccess } = useToast();
+  const { user, getUserRole } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Helper function to safely display error messages
+  const safeErrorDisplay = (error) => {
+    if (typeof error === 'string') return error;
+    if (error && typeof error === 'object' && error.msg) return String(error.msg);
+    return String(error);
+  };
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [bookingForm, setBookingForm] = useState({
-    psychiatrist_id: '',
+    consultant_id: '',
     booking_date: '',
     booking_time: '',
     duration_minutes: 30,
@@ -23,13 +32,19 @@ const HrDashboard = () => {
   const [availableTimes, setAvailableTimes] = useState([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
   
-  // Psychiatrist management state
-  const [psychiatrists, setPsychiatrists] = useState([]);
-  const [showCreatePsychiatristModal, setShowCreatePsychiatristModal] = useState(false);
-  const [showEditPsychiatristModal, setShowEditPsychiatristModal] = useState(false);
-  const [editingPsychiatrist, setEditingPsychiatrist] = useState(null);
+  // Consultant management state
+  const [consultants, setConsultants] = useState([]);
+  const [showCreateConsultantModal, setShowCreateConsultantModal] = useState(false);
+  const [showEditConsultantModal, setShowEditConsultantModal] = useState(false);
+  const [editingConsultant, setEditingConsultant] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
-  const [psychiatristToDelete, setPsychiatristToDelete] = useState(null);
+  const [consultantToDelete, setConsultantToDelete] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedConsultant, setSelectedConsultant] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [psychiatristTimetable, setPsychiatristTimetable] = useState(null);
+  const [loadingTimetable, setLoadingTimetable] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -38,12 +53,12 @@ const HrDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [data, psychiatristsData] = await Promise.all([
+      const [data, consultantsData] = await Promise.all([
         apiService.getHrDashboard(),
         apiService.getAllPsychiatrists()
       ]);
       setDashboardData(data);
-      setPsychiatrists(psychiatristsData);
+      setConsultants(consultantsData);
     } catch (error) {
       showError('Failed to load dashboard data');
       console.error('Error fetching dashboard data:', error);
@@ -54,28 +69,46 @@ const HrDashboard = () => {
 
 
 
-  const handleBookPsychiatrist = async (e) => {
+  const handleBookConsultant = async (e) => {
     e.preventDefault();
     try {
+      // Create the local datetime string
+      const localDateTime = `${bookingForm.booking_date}T${bookingForm.booking_time}:00`;
+      
+      // Parse the date and time components
+      const [year, month, day] = bookingForm.booking_date.split('-').map(Number);
+      const [hour, minute] = bookingForm.booking_time.split(':').map(Number);
+      
+      // Create a Date object representing local time
+      const localDate = new Date(year, month - 1, day, hour, minute, 0);
+      
+      // Convert to UTC
+      // For UTC+5:30, we need to subtract 5.5 hours to get UTC
+      const utcDateTime = new Date(localDate.getTime() - (5.5 * 60 * 60 * 1000));
+      
       const bookingData = {
-        psychiatrist_id: parseInt(bookingForm.psychiatrist_id),
-        booking_date: `${bookingForm.booking_date}T${bookingForm.booking_time}:00`,
+        psychiatrist_id: parseInt(bookingForm.consultant_id),
+        booking_date: utcDateTime.toISOString(),
         duration_minutes: bookingForm.duration_minutes,
         notes: bookingForm.notes
       };
 
+      console.log('Booking data being sent:', bookingData);
+      console.log('Selected time:', bookingForm.booking_time);
+      console.log('Formatted booking date:', bookingData.booking_date);
+
       if (selectedEmployee) {
-        await apiService.hrBookForEmployee(selectedEmployee.id, bookingData);
+        await apiService.bookPsychiatristForEmployee(bookingData, selectedEmployee.id);
         showSuccess('Psychiatrist booked for employee successfully');
       } else {
-        await apiService.hrBookPsychiatrist(bookingData);
+        await apiService.bookPsychiatrist(bookingData);
         showSuccess('Psychiatrist booked successfully');
       }
 
       setShowBookingModal(false);
       setAvailableTimes([]);
       setBookingForm({
-        psychiatrist_id: '',
+        consultant_id: '',
         booking_date: '',
         booking_time: '',
         duration_minutes: 30,
@@ -83,7 +116,16 @@ const HrDashboard = () => {
       });
       setSelectedEmployee(null);
       fetchDashboardData();
+      
+      // Refresh the timetable if a psychiatrist and date are selected
+      // Add a small delay to ensure backend has processed the booking
+      if (bookingForm.consultant_id && bookingForm.booking_date) {
+        setTimeout(() => {
+          fetchPsychiatristTimetable(parseInt(bookingForm.consultant_id), bookingForm.booking_date);
+        }, 500);
+      }
     } catch (error) {
+      console.error('Booking error:', error);
       showError('Failed to book psychiatrist');
     }
   };
@@ -94,84 +136,186 @@ const HrDashboard = () => {
     return { level: 'High', color: 'text-red-600', bg: 'bg-red-100' };
   };
 
-  const fetchAvailableTimes = async (psychiatristId, date) => {
-    if (!psychiatristId || !date) {
-      setAvailableTimes([]);
-      return;
-    }
-
+  const fetchAvailableTimes = async (consultantId, date) => {
+    if (!consultantId || !date) return;
+    
     try {
       setLoadingTimes(true);
-      const response = await apiService.getPsychiatristAvailableTimes(psychiatristId, date);
-      setAvailableTimes(response.available_times || []);
+      const response = await apiService.getAvailableTimes(consultantId, date);
+      setAvailableTimes(response);
     } catch (error) {
       console.error('Error fetching available times:', error);
-      setAvailableTimes([]);
+      showError('Failed to load available times');
     } finally {
       setLoadingTimes(false);
     }
   };
 
-  const handleBookingFormChange = (field, value) => {
-    setBookingForm(prev => ({ ...prev, [field]: value }));
+  const fetchPsychiatristTimetable = async (psychiatristId, date) => {
+    if (!psychiatristId || !date) return;
     
-    // Fetch available times when psychiatrist or date changes
-    if (field === 'psychiatrist_id' || field === 'booking_date') {
-      const psychiatristId = field === 'psychiatrist_id' ? value : bookingForm.psychiatrist_id;
-      const date = field === 'booking_date' ? value : bookingForm.booking_date;
+    try {
+      setLoadingTimetable(true);
+      const response = await apiService.getPsychiatristTimetable(psychiatristId, date);
+      console.log('Timetable response:', response);
+      console.log('Number of slots received:', response?.slots?.length || 0);
+      console.log('Available slots:', response?.slots?.filter(slot => slot.available).length || 0);
+      console.log('Booked slots:', response?.slots?.filter(slot => !slot.available).length || 0);
+      console.log('All slots details:', response?.slots);
+      setPsychiatristTimetable(response);
+    } catch (error) {
+      console.error('Error fetching psychiatrist timetable:', error);
+      showError('Failed to load psychiatrist timetable');
+    } finally {
+      setLoadingTimetable(false);
+    }
+  };
+
+  const handleBookingFormChange = (field, value) => {
+    setBookingForm({ ...bookingForm, [field]: value });
+    
+    if (field === 'consultant_id' && value) {
+      // When a psychiatrist is selected, fetch their timetable for the selected date
+      const selectedDate = bookingForm.booking_date || new Date().toISOString().slice(0, 10);
+      fetchPsychiatristTimetable(parseInt(value), selectedDate);
+      // Clear booking time when consultant changes
+      setBookingForm(prev => ({ ...prev, booking_time: '' }));
+    } else if (field === 'booking_date' && bookingForm.consultant_id) {
+      // When date changes, fetch timetable for the selected psychiatrist
+      fetchPsychiatristTimetable(parseInt(bookingForm.consultant_id), value);
+      // Clear booking time when date changes
+      setBookingForm(prev => ({ ...prev, booking_time: '' }));
+    }
+  };
+
+  // Consultant management functions
+  const handleCreateConsultant = async (consultantData) => {
+    try {
+      await apiService.createPsychiatristWithAvailability(consultantData);
+      showSuccess('Psychiatrist created successfully!');
+      setShowCreateConsultantModal(false);
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      console.error('Error creating psychiatrist:', error);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error message:', error.message);
       
-      if (psychiatristId && date) {
-        fetchAvailableTimes(psychiatristId, date);
+      // Handle different types of error responses
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        console.error('Processing error data:', errorData);
+        
+        if (errorData.detail) {
+          showError(String(errorData.detail));
+        } else if (typeof errorData === 'object') {
+          // Handle validation errors - extract messages from error objects
+          const errorMessages = [];
+          for (const [field, errors] of Object.entries(errorData)) {
+            console.error(`Processing field ${field}:`, errors);
+            if (Array.isArray(errors)) {
+              errors.forEach(error => {
+                if (typeof error === 'string') {
+                  errorMessages.push(error);
+                } else if (error && typeof error === 'object' && error.msg) {
+                  errorMessages.push(String(error.msg));
+                } else {
+                  console.error('Unexpected error format:', error);
+                }
+              });
+            } else if (typeof errors === 'string') {
+              errorMessages.push(errors);
+            } else if (errors && typeof errors === 'object' && errors.msg) {
+              errorMessages.push(String(errors.msg));
+            } else {
+              console.error('Unexpected error format:', errors);
+            }
+          }
+          const finalMessage = errorMessages.length > 0 ? errorMessages.join(', ') : 'Validation failed';
+          console.error('Final error message:', finalMessage);
+          showError(finalMessage);
+        } else {
+          showError(String(errorData));
+        }
       } else {
-        setAvailableTimes([]);
+        showError(typeof error.message === 'string' ? error.message : 'Failed to create psychiatrist');
       }
     }
   };
 
-  // Psychiatrist management functions
-  const handleCreatePsychiatrist = async (psychiatristData) => {
+  const handleUpdateConsultant = async (consultantData) => {
     try {
-      await apiService.createPsychiatristWithAvailability(psychiatristData);
-      showSuccess('Psychiatrist created successfully!');
-      setShowCreatePsychiatristModal(false);
-      fetchDashboardData(); // Refresh data
-    } catch (error) {
-      showError(error.message || 'Failed to create psychiatrist');
-    }
-  };
-
-  const handleUpdatePsychiatrist = async (psychiatristData) => {
-    try {
-      await apiService.updatePsychiatrist(editingPsychiatrist.id, psychiatristData);
+      await apiService.updatePsychiatrist(editingConsultant.id, consultantData);
       showSuccess('Psychiatrist updated successfully!');
-      setShowEditPsychiatristModal(false);
-      setEditingPsychiatrist(null);
+      setShowEditConsultantModal(false);
+      setEditingConsultant(null);
       fetchDashboardData(); // Refresh data
     } catch (error) {
-      showError(error.message || 'Failed to update psychiatrist');
+      console.error('Error updating psychiatrist:', error);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error message:', error.message);
+      
+      // Handle different types of error responses
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        console.error('Processing error data:', errorData);
+        
+        if (errorData.detail) {
+          showError(String(errorData.detail));
+        } else if (typeof errorData === 'object') {
+          // Handle validation errors - extract messages from error objects
+          const errorMessages = [];
+          for (const [field, errors] of Object.entries(errorData)) {
+            console.error(`Processing field ${field}:`, errors);
+            if (Array.isArray(errors)) {
+              errors.forEach(error => {
+                if (typeof error === 'string') {
+                  errorMessages.push(error);
+                } else if (error && typeof error === 'object' && error.msg) {
+                  errorMessages.push(String(error.msg));
+                } else {
+                  console.error('Unexpected error format:', error);
+                }
+              });
+            } else if (typeof errors === 'string') {
+              errorMessages.push(errors);
+            } else if (errors && typeof errors === 'object' && errors.msg) {
+              errorMessages.push(String(errors.msg));
+            } else {
+              console.error('Unexpected error format:', errors);
+            }
+          }
+          const finalMessage = errorMessages.length > 0 ? errorMessages.join(', ') : 'Validation failed';
+          console.error('Final error message:', finalMessage);
+          showError(finalMessage);
+        } else {
+          showError(String(errorData));
+        }
+      } else {
+        showError(typeof error.message === 'string' ? error.message : 'Failed to update psychiatrist');
+      }
     }
   };
 
-  const handleDeletePsychiatrist = async (psychiatristId) => {
-    setPsychiatristToDelete(psychiatristId);
+  const handleDeleteConsultant = async (consultantId) => {
+    setConsultantToDelete(consultantId);
     setShowDeleteConfirmModal(true);
   };
 
-  const confirmDeletePsychiatrist = async () => {
+  const confirmDeleteConsultant = async () => {
     try {
-      await apiService.deletePsychiatrist(psychiatristToDelete);
+      await apiService.deletePsychiatrist(consultantToDelete);
       showSuccess('Psychiatrist deleted successfully!');
       setShowDeleteConfirmModal(false);
-      setPsychiatristToDelete(null);
+      setConsultantToDelete(null);
       fetchDashboardData(); // Refresh data
     } catch (error) {
-      showError(error.message || 'Failed to delete psychiatrist');
+      showError(typeof error.message === 'string' ? error.message : 'Failed to delete psychiatrist');
     }
   };
 
-  const handleEditPsychiatrist = (psychiatrist) => {
-    setEditingPsychiatrist(psychiatrist);
-    setShowEditPsychiatristModal(true);
+  const handleEditConsultant = (consultant) => {
+    setEditingConsultant(consultant);
+    setShowEditConsultantModal(true);
   };
 
   // Function to check for overlapping time slots
@@ -298,8 +442,8 @@ const HrDashboard = () => {
               {[
                 { id: 'overview', name: 'Overview', icon: '📊' },
                 { id: 'stress-scores', name: 'Shared Stress Scores', icon: '📈' },
-                { id: 'psychiatrists', name: 'Psychiatrists', icon: '👨‍⚕️' },
-                { id: 'psychiatrist-management', name: 'Manage Psychiatrists', icon: '⚙️' }
+                { id: 'consultants', name: 'Consultants', icon: '👨‍⚕️' },
+                { id: 'consultant-management', name: 'Manage Consultants', icon: '⚙️' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -362,13 +506,13 @@ const HrDashboard = () => {
                         onClick={() => setShowBookingModal(true)}
                         className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
                       >
-                        Book Psychiatrist Session
+                        Book Consultant Session
                       </button>
                       <Link
-                        to="/psychiatrists"
+                        to="/consultants"
                         className="block w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center"
                       >
-                        View Available Psychiatrists
+                        View Available Consultants
                       </Link>
 
                     </div>
@@ -380,7 +524,7 @@ const HrDashboard = () => {
                       {dashboardData.hr_bookings.slice(0, 3).map((booking) => (
                         <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div>
-                            <p className="font-medium text-gray-900">{booking.psychiatrist_name}</p>
+                            <p className="font-medium text-gray-900">{booking.consultant_name}</p>
                             <p className="text-sm text-gray-600">
                               {new Date(booking.booking_date).toLocaleDateString()}
                             </p>
@@ -409,7 +553,7 @@ const HrDashboard = () => {
                     onClick={() => setShowBookingModal(true)}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
                   >
-                    Book Psychiatrist for Employee
+                    Book Consultant for Employee
                   </button>
                 </div>
 
@@ -449,7 +593,7 @@ const HrDashboard = () => {
                             }}
                             className="mt-4 w-full bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
                           >
-                            Book Psychiatrist Session
+                            Book Consultant Session
                           </button>
                         )}
                       </div>
@@ -465,11 +609,11 @@ const HrDashboard = () => {
 
 
 
-            {/* Psychiatrists Tab */}
-            {activeTab === 'psychiatrists' && (
+            {/* Consultants Tab */}
+            {activeTab === 'consultants' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Available Psychiatrists</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Available Consultants</h3>
                   <button
                     onClick={() => setShowBookingModal(true)}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
@@ -479,14 +623,14 @@ const HrDashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {dashboardData.available_psychiatrists.map((psychiatrist) => (
-                    <div key={psychiatrist.id} className="bg-white border rounded-lg p-6">
-                      <h4 className="font-semibold text-gray-900 mb-2">{psychiatrist.name}</h4>
-                      <p className="text-sm text-gray-600 mb-2">{psychiatrist.specialization}</p>
-                      <p className="text-sm text-gray-600 mb-4">{psychiatrist.hospital}</p>
+                  {dashboardData.available_consultants.map((consultant) => (
+                    <div key={consultant.id} className="bg-white border rounded-lg p-6">
+                      <h4 className="font-semibold text-gray-900 mb-2">{consultant.name}</h4>
+                      <p className="text-sm text-gray-600 mb-2">{consultant.specialization}</p>
+                      <p className="text-sm text-gray-600 mb-4">{consultant.hospital}</p>
                       <button
                         onClick={() => {
-                          setBookingForm({ ...bookingForm, psychiatrist_id: psychiatrist.id });
+                          setBookingForm({ ...bookingForm, consultant_id: consultant.id });
                           setShowBookingModal(true);
                         }}
                         className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -506,7 +650,7 @@ const HrDashboard = () => {
                         <div key={booking.id} className="bg-white border rounded-lg p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-medium text-gray-900">{booking.psychiatrist_name}</p>
+                              <p className="font-medium text-gray-900">{booking.consultant_name}</p>
                               <p className="text-sm text-gray-600">
                                 {new Date(booking.booking_date).toLocaleDateString()} at{' '}
                                 {new Date(booking.booking_date).toLocaleTimeString()}
@@ -535,16 +679,16 @@ const HrDashboard = () => {
               </div>
             )}
 
-            {/* Psychiatrist Management Tab */}
-            {activeTab === 'psychiatrist-management' && (
+            {/* Consultant Management Tab */}
+            {activeTab === 'consultant-management' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Manage Psychiatrists</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Manage Consultants</h3>
                   <button
-                    onClick={() => setShowCreatePsychiatristModal(true)}
+                    onClick={() => setShowCreateConsultantModal(true)}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    Add Psychiatrist
+                    Add Consultant
                   </button>
                 </div>
 
@@ -573,32 +717,32 @@ const HrDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {psychiatrists.map((psychiatrist) => (
-                        <tr key={psychiatrist.id}>
+                      {consultants.map((consultant) => (
+                        <tr key={consultant.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {psychiatrist.name}
+                            {consultant.name}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {psychiatrist.qualifications}
+                            {consultant.qualifications}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {psychiatrist.registration_number}
+                            {consultant.registration_number}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {psychiatrist.hospital}
+                            {consultant.hospital}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {psychiatrist.specialization}
+                            {consultant.specialization}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button
-                              onClick={() => handleEditPsychiatrist(psychiatrist)}
+                              onClick={() => handleEditConsultant(consultant)}
                               className="text-blue-600 hover:text-blue-900 mr-3"
                             >
                               Edit
                             </button>
                             <button
-                              onClick={() => handleDeletePsychiatrist(psychiatrist.id)}
+                              onClick={() => handleDeleteConsultant(consultant.id)}
                               className="text-red-600 hover:text-red-900"
                             >
                               Delete
@@ -617,131 +761,266 @@ const HrDashboard = () => {
 
 
 
-      {/* Book Psychiatrist Modal */}
+      {/* Book Consultant Modal */}
       {showBookingModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                {selectedEmployee ? `Book Psychiatrist for ${selectedEmployee.name}` : 'Book Psychiatrist Session'}
+                {selectedEmployee ? `Book Consultant for ${selectedEmployee.name}` : 'Book Consultant Session'}
               </h3>
-              <form onSubmit={handleBookPsychiatrist} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Psychiatrist</label>
-                  <select
-                    value={bookingForm.psychiatrist_id}
-                    onChange={(e) => handleBookingFormChange('psychiatrist_id', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Select a psychiatrist</option>
-                    {dashboardData.available_psychiatrists.map((psychiatrist) => (
-                      <option key={psychiatrist.id} value={psychiatrist.id}>
-                        {psychiatrist.name} - {psychiatrist.specialization}
-                      </option>
-                    ))}
-                  </select>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Booking Form */}
+                <div className="space-y-4">
+                  <form onSubmit={handleBookConsultant} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Psychiatrist</label>
+                      <select
+                        value={bookingForm.consultant_id}
+                        onChange={(e) => handleBookingFormChange('consultant_id', e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">Select a psychiatrist</option>
+                        {dashboardData.available_psychiatrists.map((consultant) => (
+                          <option key={consultant.id} value={consultant.id}>
+                            {consultant.name} - {consultant.specialization}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                      <input
+                        type="date"
+                        value={bookingForm.booking_date}
+                        onChange={(e) => handleBookingFormChange('booking_date', e.target.value)}
+                        min={new Date().toISOString().slice(0, 10)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Cannot book sessions in the past</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                      <select
+                        value={bookingForm.booking_time}
+                        onChange={(e) => setBookingForm({ ...bookingForm, booking_time: e.target.value })}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                        disabled={loadingTimetable}
+                      >
+                        <option value="">
+                          {loadingTimetable ? 'Loading available times...' : 'Select a time'}
+                        </option>
+                        {psychiatristTimetable?.slots?.filter(slot => {
+                          // Only show available slots
+                          if (!slot.available) return false;
+                          
+                          // Filter out past time slots for today
+                          if (bookingForm.booking_date === new Date().toISOString().slice(0, 10)) {
+                            const now = new Date();
+                            const slotTime = new Date(`${bookingForm.booking_date}T${slot.start_time}`);
+                            return slotTime > now;
+                          }
+                          return true;
+                        }).map((slot) => (
+                          <option key={`${slot.start_time}-${slot.end_time}`} value={slot.start_time}>
+                            {slot.start_time} - {slot.end_time}
+                          </option>
+                        )) || []}
+                      </select>
+                      {psychiatristTimetable?.slots?.filter(slot => {
+                        // Only show available slots
+                        if (!slot.available) return false;
+                        
+                        // Filter out past time slots for today
+                        if (bookingForm.booking_date === new Date().toISOString().slice(0, 10)) {
+                          const now = new Date();
+                          const slotTime = new Date(`${bookingForm.booking_date}T${slot.start_time}`);
+                          return slotTime > now;
+                        }
+                        return true;
+                      }).length === 0 && bookingForm.consultant_id && bookingForm.booking_date && !loadingTimetable && (
+                        <p className="text-sm text-red-600 mt-1">
+                          {bookingForm.booking_date === new Date().toISOString().slice(0, 10) 
+                            ? 'No available times for this psychiatrist on the selected date (past times are not shown)' 
+                            : 'No available times for this psychiatrist on the selected date'}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+                      <input
+                        type="text"
+                        value="30 minutes"
+                        className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100"
+                        disabled
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Session duration is fixed at 30 minutes</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
+                      <textarea
+                        value={bookingForm.notes}
+                        onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows="2"
+                      />
+                    </div>
+                    <div className="flex space-x-3">
+                      <button
+                        type="submit"
+                        className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        Book Session
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowBookingModal(false);
+                          setSelectedEmployee(null);
+                          setAvailableTimes([]);
+                          setPsychiatristTimetable(null);
+                          setBookingForm({
+                            consultant_id: '',
+                            booking_date: '',
+                            booking_time: '',
+                            duration_minutes: 30,
+                            notes: ''
+                          });
+                        }}
+                        className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                  <input
-                    type="date"
-                    value={bookingForm.booking_date}
-                    onChange={(e) => handleBookingFormChange('booking_date', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
-                  <select
-                    value={bookingForm.booking_time}
-                    onChange={(e) => setBookingForm({ ...bookingForm, booking_time: e.target.value })}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                    disabled={loadingTimes}
-                  >
-                    <option value="">
-                      {loadingTimes ? 'Loading available times...' : 'Select a time'}
-                    </option>
-                    {availableTimes.map((timeSlot) => (
-                      <option key={timeSlot.display} value={timeSlot.start_time}>
-                        {timeSlot.display}
-                      </option>
-                    ))}
-                  </select>
-                  {availableTimes.length === 0 && bookingForm.psychiatrist_id && bookingForm.booking_date && !loadingTimes && (
-                    <p className="text-sm text-red-600 mt-1">No available times for this psychiatrist on the selected date</p>
+
+                {/* Timetable Display */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900">Psychiatrist Timetable</h4>
+                  
+                  {bookingForm.consultant_id && bookingForm.booking_date ? (
+                    loadingTimetable ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="mt-2 text-gray-600">Loading timetable...</p>
+                      </div>
+                    ) : psychiatristTimetable ? (
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="mb-4">
+                          <h5 className="font-medium text-gray-900">
+                            {new Date(bookingForm.booking_date).toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </h5>
+                        </div>
+                        
+                        {psychiatristTimetable.available ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            {(() => {
+                              console.log('=== TIMETABLE RENDERING SUMMARY ===');
+                              console.log('Total slots:', psychiatristTimetable.slots.length);
+                              console.log('Available slots:', psychiatristTimetable.slots.filter(slot => slot.available).length);
+                              console.log('Booked slots:', psychiatristTimetable.slots.filter(slot => !slot.available).length);
+                              console.log('All slots:', psychiatristTimetable.slots);
+                              return null;
+                            })()}
+                            {psychiatristTimetable.slots.map((slot, index) => {
+                              console.log(`Rendering slot ${index}:`, slot);
+                              return (
+                              <div
+                                key={index}
+                                className={`p-3 rounded-lg border text-center ${
+                                  slot.available
+                                    ? 'bg-green-50 border-green-200'
+                                    : slot.status === 'pending'
+                                    ? 'bg-yellow-50 border-yellow-200'
+                                    : slot.status === 'approved'
+                                    ? 'bg-blue-50 border-blue-200'
+                                    : slot.status === 'completed'
+                                    ? 'bg-green-100 border-green-300'
+                                    : slot.status === 'cancelled'
+                                    ? 'bg-gray-50 border-gray-200'
+                                    : slot.status === 'rejected'
+                                    ? 'bg-red-100 border-red-300'
+                                    : 'bg-red-50 border-red-200'
+                                }`}
+                              >
+                                <div className="font-medium text-sm">
+                                  {slot.start_time} - {slot.end_time}
+                                  {/* Show past indicator for today's past sessions */}
+                                  {bookingForm.booking_date === new Date().toISOString().slice(0, 10) && 
+                                   !slot.available && 
+                                   new Date(`${bookingForm.booking_date}T${slot.start_time}`) < new Date() && (
+                                    <div className="text-xs text-gray-500 mt-1">(Past)</div>
+                                  )}
+                                </div>
+                                {!slot.available && (
+                                  <div className="text-xs text-gray-600 mt-1">
+                                    <div className="font-medium">
+                                      {slot.status === 'pending' ? 'Pending' : 
+                                       slot.status === 'approved' ? 'Approved' : 
+                                       slot.status === 'completed' ? 'Completed' : 
+                                       slot.status === 'cancelled' ? 'Cancelled' : 
+                                       slot.status === 'rejected' ? 'Rejected' : 'Booked'}
+                                    </div>
+                                    {slot.employee_name && (
+                                      <div className="text-gray-500">
+                                        by {slot.employee_name}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )})}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-gray-500">
+                            No availability for this date
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        Select a psychiatrist and date to view timetable
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      Select a psychiatrist and date to view timetable
+                    </div>
                   )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
-                  <input
-                    type="text"
-                    value="30 minutes"
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100"
-                    disabled
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Session duration is fixed at 30 minutes</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
-                  <textarea
-                    value={bookingForm.notes}
-                    onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows="2"
-                  />
-                </div>
-                <div className="flex space-x-3">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    Book Session
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowBookingModal(false);
-                      setSelectedEmployee(null);
-                      setAvailableTimes([]);
-                      setBookingForm({
-                        psychiatrist_id: '',
-                        booking_date: '',
-                        booking_time: '',
-                        duration_minutes: 30,
-                        notes: ''
-                      });
-                    }}
-                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Create Psychiatrist Modal */}
-      {showCreatePsychiatristModal && (
-        <CreatePsychiatristModal
-          onClose={() => setShowCreatePsychiatristModal(false)}
-          onSubmit={handleCreatePsychiatrist}
+      {/* Create Consultant Modal */}
+      {showCreateConsultantModal && (
+        <CreateConsultantModal
+          onClose={() => setShowCreateConsultantModal(false)}
+          onSubmit={handleCreateConsultant}
         />
       )}
 
-      {/* Edit Psychiatrist Modal */}
-      {showEditPsychiatristModal && editingPsychiatrist && (
-        <EditPsychiatristModal
+      {/* Edit Consultant Modal */}
+      {showEditConsultantModal && editingConsultant && (
+        <EditConsultantModal
           onClose={() => {
-            setShowEditPsychiatristModal(false);
-            setEditingPsychiatrist(null);
+            setShowEditConsultantModal(false);
+            setEditingConsultant(null);
           }}
-          onSubmit={handleUpdatePsychiatrist}
-          psychiatrist={editingPsychiatrist}
+          onSubmit={handleUpdateConsultant}
+          consultant={editingConsultant}
         />
       )}
 
@@ -750,11 +1029,11 @@ const HrDashboard = () => {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Psychiatrist</h3>
-              <p className="text-gray-600 mb-6">Are you sure you want to delete this psychiatrist? This action cannot be undone.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Consultant</h3>
+              <p className="text-gray-600 mb-6">Are you sure you want to delete this consultant? This action cannot be undone.</p>
               <div className="flex space-x-3">
                 <button
-                  onClick={confirmDeletePsychiatrist}
+                  onClick={confirmDeleteConsultant}
                   className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                 >
                   Delete
@@ -762,7 +1041,7 @@ const HrDashboard = () => {
                 <button
                   onClick={() => {
                     setShowDeleteConfirmModal(false);
-                    setPsychiatristToDelete(null);
+                    setConsultantToDelete(null);
                   }}
                   className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
                 >
@@ -777,16 +1056,23 @@ const HrDashboard = () => {
   );
 };
 
-// Create Psychiatrist Modal Component
-const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
+// Create Consultant Modal Component
+const CreateConsultantModal = ({ onClose, onSubmit }) => {
   const { showError } = useToast();
+  
+  // Helper function to safely display error messages
+  const safeErrorDisplay = (error) => {
+    if (typeof error === 'string') return error;
+    if (error && typeof error === 'object' && error.msg) return String(error.msg);
+    return String(error);
+  };
   const [formData, setFormData] = useState({
     name: '',
     qualifications: '',
     registration_number: '',
     hospital: '',
     specialization: '',
-    username: '',
+    email: '',
     password: '',
     availabilities: []
   });
@@ -804,14 +1090,14 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
     { value: 6, label: 'Sunday' }
   ];
 
-  // Validation schema for psychiatrist creation
+  // Validation schema for consultant creation
   const validationSchema = {
     name: [validationRules.required, validationRules.name],
     qualifications: [validationRules.required, (value) => validationRules.textLength(value, 'Qualifications', 2, 200)],
     registration_number: [validationRules.required, (value) => validationRules.textLength(value, 'Registration Number', 3, 50)],
     hospital: [validationRules.required, (value) => validationRules.textLength(value, 'Hospital', 2, 100)],
     specialization: [validationRules.required, (value) => validationRules.textLength(value, 'Specialization', 2, 100)],
-    username: [validationRules.required, validationRules.email],
+    email: [validationRules.required, validationRules.email],
     password: [validationRules.required, validationRules.password]
   };
 
@@ -862,7 +1148,7 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    setTouched({ name: true, qualifications: true, registration_number: true, hospital: true, specialization: true });
+    setTouched({ name: true, qualifications: true, registration_number: true, hospital: true, specialization: true, email: true, password: true });
     
     const formErrors = validateForm(formData, validationSchema);
     setErrors(formErrors);
@@ -900,9 +1186,62 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
     
     try {
       setIsSubmitting(true);
+      console.log('Submitting form data:', formData);
       await onSubmit(formData);
     } catch (error) {
-      showError(error.message || 'Failed to create psychiatrist');
+      console.error('Form submission error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
+      
+      let errorMessage = 'Failed to create psychiatrist';
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        console.error('Processing error data:', errorData);
+        
+        if (errorData.detail) {
+          errorMessage = String(errorData.detail);
+        } else if (Array.isArray(errorData)) {
+          // Handle Pydantic validation errors array
+          const messages = errorData.map(err => {
+            if (typeof err === 'string') return err;
+            if (err && typeof err === 'object' && err.msg) return String(err.msg);
+            return String(err);
+          });
+          errorMessage = messages.join(', ');
+        } else if (typeof errorData === 'object') {
+          // Handle validation errors object
+          const errorMessages = [];
+          for (const [field, errors] of Object.entries(errorData)) {
+            console.error(`Processing field ${field}:`, errors);
+            if (Array.isArray(errors)) {
+              errors.forEach(error => {
+                if (typeof error === 'string') {
+                  errorMessages.push(error);
+                } else if (error && typeof error === 'object' && error.msg) {
+                  errorMessages.push(String(error.msg));
+                } else {
+                  console.error('Unexpected error format:', error);
+                }
+              });
+            } else if (typeof errors === 'string') {
+              errorMessages.push(errors);
+            } else if (errors && typeof errors === 'object' && errors.msg) {
+              errorMessages.push(String(errors.msg));
+            } else {
+              console.error('Unexpected error format:', errors);
+            }
+          }
+          errorMessage = errorMessages.length > 0 ? errorMessages.join(', ') : 'Validation failed';
+        } else {
+          errorMessage = String(errorData);
+        }
+      } else if (typeof error.message === 'string') {
+        errorMessage = error.message;
+      }
+      
+      console.error('Final error message:', errorMessage);
+      showError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -914,7 +1253,7 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold text-[#212121] flex items-center">
             <span className="mr-2">👨‍⚕️</span>
-            Add New Psychiatrist
+            Add New Consultant
           </h3>
           <button
             onClick={onClose}
@@ -945,10 +1284,10 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
                       ? 'border-red-500 focus:ring-red-500' 
                       : 'border-gray-200 focus:ring-blue-500'
                   }`}
-                  placeholder="Enter psychiatrist's full name"
+                  placeholder="Enter consultant's full name"
                 />
                 {touched.name && errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.name)}</p>
                 )}
               </div>
               <div>
@@ -967,7 +1306,7 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
                   placeholder="e.g., MBBS, MD Psychiatry"
                 />
                 {touched.qualifications && errors.qualifications && (
-                  <p className="text-red-500 text-sm mt-1">{errors.qualifications}</p>
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.qualifications)}</p>
                 )}
               </div>
             </div>
@@ -988,7 +1327,7 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
                   placeholder="Enter registration number"
                 />
                 {touched.registration_number && errors.registration_number && (
-                  <p className="text-red-500 text-sm mt-1">{errors.registration_number}</p>
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.registration_number)}</p>
                 )}
               </div>
               <div>
@@ -1007,7 +1346,7 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
                   placeholder="Enter hospital name"
                 />
                 {touched.hospital && errors.hospital && (
-                  <p className="text-red-500 text-sm mt-1">{errors.hospital}</p>
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.hospital)}</p>
                 )}
               </div>
             </div>
@@ -1027,7 +1366,7 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
                 placeholder="e.g., Clinical Psychology, Psychiatry"
               />
               {touched.specialization && errors.specialization && (
-                <p className="text-red-500 text-sm mt-1">{errors.specialization}</p>
+                <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.specialization)}</p>
               )}
             </div>
           </div>
@@ -1043,19 +1382,19 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
                 <label className="block text-[#212121] font-medium mb-2">Email Address <span className="text-red-500">*</span></label>
                 <input
                   type="email"
-                  name="username"
-                  value={formData.username}
+                  name="email"
+                  value={formData.email}
                   onChange={handleChange}
                   onBlur={handleBlur}
                   className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                    touched.username && errors.username 
+                    touched.email && errors.email 
                       ? 'border-red-500 focus:ring-red-500' 
                       : 'border-gray-200 focus:ring-blue-500'
                   }`}
                   placeholder="Enter email address"
                 />
-                {touched.username && errors.username && (
-                  <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+                {touched.email && errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.email)}</p>
                 )}
               </div>
               <div>
@@ -1075,7 +1414,7 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
                   placeholder="Enter password (min 8 characters)"
                 />
                 {touched.password && errors.password && (
-                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.password)}</p>
                 )}
               </div>
             </div>
@@ -1152,7 +1491,7 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
               disabled={isSubmitting}
               className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Creating...' : 'Create Psychiatrist'}
+              {isSubmitting ? 'Creating...' : 'Create Consultant'}
             </button>
             <button
               type="button"
@@ -1168,18 +1507,25 @@ const CreatePsychiatristModal = ({ onClose, onSubmit }) => {
   );
 };
 
-// Edit Psychiatrist Modal Component
-const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
+// Edit Consultant Modal Component
+const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
   const { showError } = useToast();
+  
+  // Helper function to safely display error messages
+  const safeErrorDisplay = (error) => {
+    if (typeof error === 'string') return error;
+    if (error && typeof error === 'object' && error.msg) return String(error.msg);
+    return String(error);
+  };
   const [formData, setFormData] = useState({
-    name: psychiatrist.name || '',
-    qualifications: psychiatrist.qualifications || '',
-    registration_number: psychiatrist.registration_number || '',
-    hospital: psychiatrist.hospital || '',
-    specialization: psychiatrist.specialization || '',
-    username: psychiatrist.username || '',
+    name: consultant.name || '',
+    qualifications: consultant.qualifications || '',
+    registration_number: consultant.registration_number || '',
+    hospital: consultant.hospital || '',
+    specialization: consultant.specialization || '',
+    email: consultant.username || '',
     password: '',
-    availabilities: psychiatrist.availabilities || []
+    availabilities: consultant.availabilities || []
   });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -1195,14 +1541,14 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
     { value: 6, label: 'Sunday' }
   ];
 
-  // Validation schema for psychiatrist editing
+  // Validation schema for consultant editing
   const validationSchema = {
     name: [validationRules.required, validationRules.name],
     qualifications: [validationRules.required, (value) => validationRules.textLength(value, 'Qualifications', 2, 200)],
     registration_number: [validationRules.required, (value) => validationRules.textLength(value, 'Registration Number', 3, 50)],
     hospital: [validationRules.required, (value) => validationRules.textLength(value, 'Hospital', 2, 100)],
     specialization: [validationRules.required, (value) => validationRules.textLength(value, 'Specialization', 2, 100)],
-    username: [validationRules.required, validationRules.email],
+    email: [validationRules.required, validationRules.email],
     password: [validationRules.required, validationRules.password]
   };
 
@@ -1253,7 +1599,7 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    setTouched({ name: true, qualifications: true, registration_number: true, hospital: true, specialization: true });
+    setTouched({ name: true, qualifications: true, registration_number: true, hospital: true, specialization: true, email: true, password: true });
     
     const formErrors = validateForm(formData, validationSchema);
     setErrors(formErrors);
@@ -1293,7 +1639,59 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
       setIsSubmitting(true);
       await onSubmit(formData);
     } catch (error) {
-      showError(error.message || 'Failed to update psychiatrist');
+      console.error('Form submission error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
+      
+      let errorMessage = 'Failed to update psychiatrist';
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        console.error('Processing error data:', errorData);
+        
+        if (errorData.detail) {
+          errorMessage = String(errorData.detail);
+        } else if (Array.isArray(errorData)) {
+          // Handle Pydantic validation errors array
+          const messages = errorData.map(err => {
+            if (typeof err === 'string') return err;
+            if (err && typeof err === 'object' && err.msg) return String(err.msg);
+            return String(err);
+          });
+          errorMessage = messages.join(', ');
+        } else if (typeof errorData === 'object') {
+          // Handle validation errors object
+          const errorMessages = [];
+          for (const [field, errors] of Object.entries(errorData)) {
+            console.error(`Processing field ${field}:`, errors);
+            if (Array.isArray(errors)) {
+              errors.forEach(error => {
+                if (typeof error === 'string') {
+                  errorMessages.push(error);
+                } else if (error && typeof error === 'object' && error.msg) {
+                  errorMessages.push(String(error.msg));
+                } else {
+                  console.error('Unexpected error format:', error);
+                }
+              });
+            } else if (typeof errors === 'string') {
+              errorMessages.push(errors);
+            } else if (errors && typeof errors === 'object' && errors.msg) {
+              errorMessages.push(String(errors.msg));
+            } else {
+              console.error('Unexpected error format:', errors);
+            }
+          }
+          errorMessage = errorMessages.length > 0 ? errorMessages.join(', ') : 'Validation failed';
+        } else {
+          errorMessage = String(errorData);
+        }
+      } else if (typeof error.message === 'string') {
+        errorMessage = error.message;
+      }
+      
+      console.error('Final error message:', errorMessage);
+      showError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -1305,7 +1703,7 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold text-[#212121] flex items-center">
             <span className="mr-2">✏️</span>
-            Edit Psychiatrist
+            Edit Consultant
           </h3>
           <button
             onClick={onClose}
@@ -1336,10 +1734,10 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
                       ? 'border-red-500 focus:ring-red-500' 
                       : 'border-gray-200 focus:ring-blue-500'
                   }`}
-                  placeholder="Enter psychiatrist's full name"
+                  placeholder="Enter consultant's full name"
                 />
                 {touched.name && errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.name)}</p>
                 )}
               </div>
               <div>
@@ -1358,7 +1756,7 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
                   placeholder="e.g., MBBS, MD Psychiatry"
                 />
                 {touched.qualifications && errors.qualifications && (
-                  <p className="text-red-500 text-sm mt-1">{errors.qualifications}</p>
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.qualifications)}</p>
                 )}
               </div>
             </div>
@@ -1379,7 +1777,7 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
                   placeholder="Enter registration number"
                 />
                 {touched.registration_number && errors.registration_number && (
-                  <p className="text-red-500 text-sm mt-1">{errors.registration_number}</p>
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.registration_number)}</p>
                 )}
               </div>
               <div>
@@ -1398,7 +1796,7 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
                   placeholder="Enter hospital name"
                 />
                 {touched.hospital && errors.hospital && (
-                  <p className="text-red-500 text-sm mt-1">{errors.hospital}</p>
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.hospital)}</p>
                 )}
               </div>
             </div>
@@ -1418,7 +1816,7 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
                 placeholder="e.g., Clinical Psychology, Psychiatry"
               />
               {touched.specialization && errors.specialization && (
-                <p className="text-red-500 text-sm mt-1">{errors.specialization}</p>
+                <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.specialization)}</p>
               )}
             </div>
           </div>
@@ -1434,19 +1832,19 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
                 <label className="block text-[#212121] font-medium mb-2">Email Address <span className="text-red-500">*</span></label>
                 <input
                   type="email"
-                  name="username"
-                  value={formData.username}
+                  name="email"
+                  value={formData.email}
                   onChange={handleChange}
                   onBlur={handleBlur}
                   className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                    touched.username && errors.username 
+                    touched.email && errors.email 
                       ? 'border-red-500 focus:ring-red-500' 
                       : 'border-gray-200 focus:ring-blue-500'
                   }`}
                   placeholder="Enter email address"
                 />
-                {touched.username && errors.username && (
-                  <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+                {touched.email && errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.email)}</p>
                 )}
               </div>
               <div>
@@ -1466,7 +1864,7 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
                   placeholder="Enter new password (min 8 characters)"
                 />
                 {touched.password && errors.password && (
-                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                  <p className="text-red-500 text-sm mt-1">{safeErrorDisplay(errors.password)}</p>
                 )}
               </div>
             </div>
@@ -1543,7 +1941,7 @@ const EditPsychiatristModal = ({ onClose, onSubmit, psychiatrist }) => {
               disabled={isSubmitting}
               className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Updating...' : 'Update Psychiatrist'}
+              {isSubmitting ? 'Updating...' : 'Update Consultant'}
             </button>
             <button
               type="button"

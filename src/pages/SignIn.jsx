@@ -10,7 +10,7 @@ const SignIn = () => {
   const [touched, setTouched] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const { showError, showSuccess, showWarning, showInfo } = useToast();
-  const { login } = useAuth();
+  const { login, getUserRole, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -61,11 +61,51 @@ const SignIn = () => {
       await login(form);
       showSuccess("Successfully signed in!");
       
-      // Redirect to intended page or dashboard
-      const from = location.state?.from?.pathname || '/dashboard';
+      // Add a small delay to ensure role is properly set
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Get user role and redirect to appropriate dashboard
+      const userRole = getUserRole();
+      console.log('User role after login:', userRole);
+      console.log('Current user object:', user);
+      
+      let redirectPath = '/dashboard'; // default
+      
+      switch (userRole) {
+        case 'admin':
+          redirectPath = '/admin-dashboard';
+          console.log('Admin detected, redirecting to admin dashboard');
+          break;
+        case 'hr_manager':
+          redirectPath = '/hr-dashboard';
+          console.log('HR Manager detected, redirecting to HR dashboard');
+          break;
+        case 'supervisor':
+          console.log('Supervisor detected, redirecting to main dashboard');
+          redirectPath = '/dashboard';
+          break;
+        case 'psychiatrist':
+          console.log('Psychiatrist detected, redirecting to main dashboard');
+          redirectPath = '/dashboard';
+          break;
+        case 'employee':
+          console.log('Employee detected, redirecting to main dashboard');
+          redirectPath = '/dashboard';
+          break;
+        default:
+          console.log('Unknown role detected:', userRole, 'redirecting to main dashboard');
+          redirectPath = '/dashboard';
+          break;
+      }
+      
+      console.log('Redirecting to:', redirectPath);
+      
+      // Redirect to intended page or appropriate dashboard
+      const from = location.state?.from?.pathname || redirectPath;
       navigate(from, { replace: true });
     } catch (error) {
-      showError(error.message || "Login failed. Please try again.");
+      console.error('Login error:', error);
+      showError(typeof error.message === 'string' ? error.message : "Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }

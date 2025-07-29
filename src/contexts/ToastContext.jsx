@@ -46,8 +46,11 @@ export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const addToast = (message, type = 'error', duration = 5000) => {
+    // Ensure message is always a string
+    const safeMessage = typeof message === 'string' ? message : String(message);
+    
     const id = Date.now() + Math.random();
-    const newToast = { id, message, type, duration };
+    const newToast = { id, message: safeMessage, type, duration };
     
     setToasts(prev => [...prev, newToast]);
     

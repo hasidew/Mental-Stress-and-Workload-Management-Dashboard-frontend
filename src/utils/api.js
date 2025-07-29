@@ -86,7 +86,47 @@ class ApiService {
           }
         }
         
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        // Create a more detailed error object
+        const error = new Error();
+        error.status = response.status;
+        error.response = { data: errorData };
+        
+        console.error('API Error - Status:', response.status);
+        console.error('API Error - Data:', errorData);
+        
+        // Handle different types of error responses
+        if (errorData.detail) {
+          error.message = String(errorData.detail);
+        } else if (typeof errorData === 'object' && Object.keys(errorData).length > 0) {
+          // Handle validation errors
+          const errorMessages = [];
+          for (const [field, messages] of Object.entries(errorData)) {
+            console.error(`API Error - Field ${field}:`, messages);
+            if (Array.isArray(messages)) {
+              messages.forEach(message => {
+                if (typeof message === 'string') {
+                  errorMessages.push(message);
+                } else if (message && typeof message === 'object' && message.msg) {
+                  errorMessages.push(String(message.msg));
+                } else {
+                  console.error('API Error - Unexpected message format:', message);
+                }
+              });
+            } else if (typeof messages === 'string') {
+              errorMessages.push(messages);
+            } else if (messages && typeof messages === 'object' && messages.msg) {
+              errorMessages.push(String(messages.msg));
+            } else {
+              console.error('API Error - Unexpected messages format:', messages);
+            }
+          }
+          error.message = errorMessages.join(', ');
+        } else {
+          error.message = `HTTP error! status: ${response.status}`;
+        }
+        
+        console.error('API Error - Final message:', error.message);
+        throw error;
       }
       
       const data = await response.json();
@@ -256,6 +296,14 @@ class ApiService {
     return await this.request('/dashboard/hr');
   }
 
+  async getHrDashboardTest() {
+    return await this.request('/dashboard/hr/test');
+  }
+
+  async getDatabaseCheck() {
+    return await this.request('/dashboard/db-check');
+  }
+
   // HR-specific endpoints
   async getHrWorkloads() {
     return await this.request('/dashboard/hr/workloads');
@@ -284,7 +332,7 @@ class ApiService {
   }
 
   async hrBookForEmployee(employeeId, bookingData) {
-    return await this.request('/dashboard/hr/book-for-employee', {
+    return await this.request('/dashboard/hr/book-psychiatrist-for-employee', {
       method: 'POST',
       body: JSON.stringify({ ...bookingData, employee_id: employeeId }),
     });
@@ -441,6 +489,9 @@ class ApiService {
     // Use HR endpoint for HR managers, admin endpoint for admins
     const userRole = this.getUserRole();
     const endpoint = userRole === 'hr_manager' ? '/hr/psychiatrists/with-availability' : '/admin/psychiatrists/with-availability';
+    console.log('API: Creating psychiatrist with data:', psychiatristData);
+    console.log('API: Using endpoint:', endpoint);
+    console.log('API: Data being sent:', JSON.stringify(psychiatristData, null, 2));
     return await this.request(endpoint, {
       method: 'POST',
       body: JSON.stringify(psychiatristData),
@@ -577,6 +628,10 @@ class ApiService {
     return await this.request('/psychiatrist/available');
   }
 
+  async getPsychiatristTimetable(psychiatristId, date) {
+    return await this.request(`/psychiatrist/${psychiatristId}/timetable?date=${date}`);
+  }
+
   async bookPsychiatrist(bookingData) {
     return await this.request('/psychiatrist/book', {
       method: 'POST',
@@ -601,7 +656,7 @@ class ApiService {
     });
   }
 
-  async bookPsychiatristForEmployee(employeeId, bookingData) {
+  async bookPsychiatristForEmployee(bookingData, employeeId) {
     return await this.request(`/psychiatrist/book-for-employee?employee_id=${employeeId}`, {
       method: 'POST',
       body: JSON.stringify(bookingData),
@@ -610,6 +665,37 @@ class ApiService {
 
   async getTeamPsychiatristBookings() {
     return await this.request('/psychiatrist/team-bookings');
+  }
+
+  // Psychiatrist approval methods
+  async getMyPendingBookings() {
+    return await this.request('/psychiatrist/my-pending-bookings');
+  }
+
+  async approveBooking(bookingId, approvalData) {
+    return await this.request(`/psychiatrist/bookings/${bookingId}/approve`, {
+      method: 'PUT',
+      body: JSON.stringify(approvalData),
+    });
+  }
+
+  // New psychiatrist dashboard methods
+  async getPsychiatristDashboard() {
+    return await this.request('/psychiatrist/dashboard');
+  }
+
+  async getMySessions() {
+    return await this.request('/psychiatrist/my-sessions');
+  }
+
+  async getPendingRequests() {
+    return await this.request('/psychiatrist/pending-requests');
+  }
+
+  async completeSession(bookingId) {
+    return await this.request(`/psychiatrist/bookings/${bookingId}/complete`, {
+      method: 'PUT',
+    });
   }
 
   // User data refresh with role change detection

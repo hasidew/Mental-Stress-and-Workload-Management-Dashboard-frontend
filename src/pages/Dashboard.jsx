@@ -31,32 +31,26 @@ const Dashboard = () => {
           console.log('Current user role:', userRole);
           console.log('User object:', user);
           
-          // Temporary debug info
-          if (userRole === 'hr_manager') {
-            console.log('HR Manager detected - should redirect to /hr-dashboard');
-          } else if (userRole === 'admin') {
-            console.log('Admin detected - should redirect to /admin-dashboard');
-          } else {
-            console.log('Other role detected:', userRole);
+          // Check if user should be on a different dashboard
+          let shouldRedirect = false;
+          let redirectPath = '';
+          
+          if (userRole === 'admin') {
+            shouldRedirect = true;
+            redirectPath = '/admin-dashboard';
+          } else if (userRole === 'hr_manager') {
+            shouldRedirect = true;
+            redirectPath = '/hr-dashboard';
           }
           
-          // Redirect admin users to admin dashboard
-          console.log('Checking admin redirect - userRole:', userRole);
-          if (shouldRedirectToAdmin(userRole)) {
-            console.log('Redirecting admin to /admin-dashboard');
-            navigate('/admin-dashboard');
-            return;
-          }
-
-          // Redirect HR users to HR dashboard
-          console.log('Checking HR redirect - userRole:', userRole);
-          if (userRole === 'hr_manager') {
-            console.log('Redirecting HR manager to /hr-dashboard');
-            navigate('/hr-dashboard');
+          // Only redirect if user is on the wrong dashboard
+          if (shouldRedirect) {
+            console.log(`Redirecting ${userRole} to ${redirectPath}`);
+            navigate(redirectPath, { replace: true });
             return;
           }
           
-          // Fetch main dashboard data
+          // Fetch main dashboard data for non-admin, non-HR users
           let data;
           switch (userRole) {
             case 'employee':
@@ -121,8 +115,7 @@ const Dashboard = () => {
           setError(null);
         } catch (error) {
           console.error('Dashboard error:', error);
-          setError(error.message);
-          showError(`Failed to load dashboard data: ${error.message}`);
+          showError(`Failed to load dashboard data: ${typeof error.message === 'string' ? error.message : 'Unknown error'}`);
         } finally {
           setLoading(false);
         }

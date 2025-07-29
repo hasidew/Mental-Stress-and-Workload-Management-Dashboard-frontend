@@ -21,7 +21,7 @@ const Navbar = () => {
         { path: '/stress-score', label: 'Stress Score' },
         { path: '/ai-chat', label: 'AI Chat' },
         { path: '/task-management', label: 'Tasks' },
-        { path: '/psychiatrists', label: 'Psychiatrists' }
+        { path: '/psychiatrists', label: 'Book Psychiatrist' }
     ];
 
     const supervisorNavItems = [
@@ -31,7 +31,18 @@ const Navbar = () => {
         { path: '/task-management', label: 'My Tasks' },
         { path: '/stress-score', label: 'My Stress' },
         { path: '/ai-chat', label: 'AI Chat' },
-        { path: '/consultants', label: 'Consultants' }
+        { path: '/psychiatrists', label: 'Book Psychiatrist' }
+    ];
+
+    const psychiatristNavItems = [
+        { path: '/psychiatrist-dashboard', label: 'My Dashboard' },
+        { path: '/dashboard', label: 'General Dashboard' }
+    ];
+
+    const hrNavItems = [
+        { path: '/hr-dashboard', label: 'HR Dashboard' },
+        { path: '/hr-psychiatrist-management', label: 'Manage Psychiatrists' },
+        { path: '/psychiatrists', label: 'Book Psychiatrist' }
     ];
 
     const adminNavItems = [
@@ -66,7 +77,9 @@ const Navbar = () => {
                         {isAuthenticated() ? (
                             <>
                                 {(getUserRole() === 'admin' ? adminNavItems : 
-                                  getUserRole() === 'supervisor' ? supervisorNavItems : 
+                                  getUserRole() === 'supervisor' ? supervisorNavItems :
+                                  getUserRole() === 'psychiatrist' ? psychiatristNavItems :
+                                  getUserRole() === 'hr_manager' ? hrNavItems :
                                   authenticatedLinks).map((item) => (
                                     <Link
                                         key={item.path}
@@ -173,7 +186,9 @@ const Navbar = () => {
                     {isAuthenticated() ? (
                         <>
                             {(getUserRole() === 'admin' ? adminNavItems : 
-                              getUserRole() === 'supervisor' ? supervisorNavItems : 
+                              getUserRole() === 'supervisor' ? supervisorNavItems :
+                              getUserRole() === 'psychiatrist' ? psychiatristNavItems :
+                              getUserRole() === 'hr_manager' ? hrNavItems :
                               authenticatedLinks).map((item) => (
                                 <Link
                                     key={item.path}

@@ -115,7 +115,8 @@ const AdminDashboard = () => {
       setTeams(teamsData);
       setDashboardData(dashboardData);
     } catch (error) {
-      showError(error.message || 'Failed to create user');
+      console.error('Create user error:', error);
+      showError(typeof error.message === 'string' ? error.message : 'Failed to create user');
     }
   };
 
@@ -132,7 +133,8 @@ const AdminDashboard = () => {
       setConsultants(consultantsData);
       setDashboardData(dashboardData);
     } catch (error) {
-      showError(error.message || 'Failed to create consultant');
+      console.error('Create consultant error:', error);
+      showError(typeof error.message === 'string' ? error.message : 'Failed to create consultant');
     }
   };
 

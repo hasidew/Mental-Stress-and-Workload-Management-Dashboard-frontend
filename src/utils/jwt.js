@@ -23,6 +23,9 @@ export const extractUserInfo = (token) => {
   if (!decoded) return null;
   
   console.log('Decoded JWT payload:', decoded);
+  console.log('Available fields in JWT:', Object.keys(decoded));
+  console.log('Role field in JWT:', decoded.role);
+  console.log('Sub field in JWT:', decoded.sub);
   
   const userInfo = {
     username: decoded.sub || decoded.username,
@@ -32,6 +35,7 @@ export const extractUserInfo = (token) => {
   };
   
   console.log('Extracted user info:', userInfo);
+  console.log('Final role being used:', userInfo.role);
   return userInfo;
 };
 
@@ -41,4 +45,25 @@ export const isTokenExpired = (token) => {
   
   const currentTime = Math.floor(Date.now() / 1000);
   return decoded.exp < currentTime;
+}; 
+
+export const testJwtDecoding = (token) => {
+  console.log('=== JWT Token Test ===');
+  console.log('Token length:', token.length);
+  console.log('Token starts with:', token.substring(0, 20) + '...');
+  
+  const decoded = decodeToken(token);
+  console.log('Decoded payload:', decoded);
+  
+  if (decoded) {
+    console.log('Role in token:', decoded.role);
+    console.log('Username in token:', decoded.sub);
+    console.log('All fields:', Object.keys(decoded));
+  }
+  
+  const userInfo = extractUserInfo(token);
+  console.log('Extracted user info:', userInfo);
+  console.log('=== End JWT Test ===');
+  
+  return userInfo;
 }; 

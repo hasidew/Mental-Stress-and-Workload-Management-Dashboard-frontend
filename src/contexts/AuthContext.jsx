@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import apiService from '../utils/api';
-import { extractUserInfo, isTokenExpired } from '../utils/jwt';
+import { extractUserInfo, isTokenExpired, testJwtDecoding } from '../utils/jwt';
 
 const AuthContext = createContext();
 
@@ -21,27 +21,35 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem('access_token');
+      console.log('Initial auth check - token exists:', !!token);
+      
       if (token && !isTokenExpired(token)) {
         const userInfo = extractUserInfo(token);
-        console.log('Initial auth check - userInfo:', userInfo);
+        console.log('Initial auth check - userInfo from token:', userInfo);
         
         // Try to get role from localStorage as fallback
         const storedRole = localStorage.getItem('user_role');
         console.log('Initial auth check - stored role:', storedRole);
         
         if (userInfo) {
-          setUser({ 
+          const userState = { 
             token, 
             ...userInfo,
             role: userInfo.role || storedRole || 'employee'
-          });
+          };
+          console.log('Initial auth check - setting user state:', userState);
+          setUser(userState);
         } else {
+          console.log('Initial auth check - invalid token, removing from localStorage');
           // Token is invalid, remove it
           localStorage.removeItem('access_token');
         }
       } else if (token && isTokenExpired(token)) {
+        console.log('Initial auth check - token expired, removing from localStorage');
         // Token is expired, remove it
         localStorage.removeItem('access_token');
+      } else {
+        console.log('Initial auth check - no token found');
       }
       setLoading(false);
     };
@@ -54,7 +62,12 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       setLoading(true);
       
+      console.log('Login attempt for:', credentials.username);
       const response = await apiService.login(credentials);
+      console.log('Login response received:', response);
+      
+      // Test JWT token decoding
+      testJwtDecoding(response.access_token);
       
       // Extract user info from JWT token
       const userInfo = extractUserInfo(response.access_token);
@@ -64,21 +77,36 @@ export const AuthProvider = ({ children }) => {
       const storedRole = localStorage.getItem('user_role');
       console.log('Stored role from localStorage:', storedRole);
       
+      // Determine the role to use
+      let finalRole = 'employee'; // default fallback
+      
       if (userInfo && userInfo.role) {
-        setUser({
-          token: response.access_token,
-          ...userInfo
-        });
+        finalRole = userInfo.role;
+        console.log('Using role from JWT token:', finalRole);
+      } else if (storedRole) {
+        finalRole = storedRole;
+        console.log('Using role from localStorage:', finalRole);
       } else {
-        setUser({
-          token: response.access_token,
-          role: storedRole || 'employee', // Use stored role or fallback
-          username: userInfo?.username || credentials.username
-        });
+        console.log('No role found, using default: employee');
       }
+      
+      // Set user state
+      const userState = {
+        token: response.access_token,
+        role: finalRole,
+        username: userInfo?.username || credentials.username
+      };
+      
+      console.log('Setting user state:', userState);
+      setUser(userState);
+      
+      // Store role in localStorage for consistency
+      localStorage.setItem('user_role', finalRole);
+      console.log('Role stored in localStorage:', finalRole);
       
       return response;
     } catch (error) {
+      console.error('Login error:', error);
       setError(error.message);
       throw error;
     } finally {

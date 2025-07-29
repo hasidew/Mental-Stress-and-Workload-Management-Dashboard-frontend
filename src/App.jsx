@@ -12,7 +12,8 @@ import HrDashboard from './pages/HrDashboard'
 import HrPsychiatristManagement from './pages/HrConsultantManagement'
 import StressScore from './pages/StressScore'
 import AiChat from './pages/AiChat'
-import Consultants from './pages/Consultants'
+import Psychiatrists from './pages/Psychiatrists'
+import PsychiatristDashboard from './pages/PsychiatristDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminSignUp from './pages/AdminSignUp'
 import TaskManagement from './pages/TaskManagement'
@@ -65,7 +66,12 @@ function App() {
               } />
               <Route path="psychiatrists" element={
                 <ProtectedRoute>
-                  <Consultants />
+                  <Psychiatrists />
+                </ProtectedRoute>
+              } />
+              <Route path="psychiatrist-dashboard" element={
+                <ProtectedRoute>
+                  <PsychiatristDashboard />
                 </ProtectedRoute>
               } />
               <Route path="admin-dashboard" element={

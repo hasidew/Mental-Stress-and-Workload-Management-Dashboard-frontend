@@ -82,6 +82,13 @@ export const validationRules = {
     return null;
   },
 
+  // Password confirmation validation
+  passwordMatch: (value, password) => {
+    if (!value) return 'Please confirm your password';
+    if (value !== password) return 'Passwords do not match';
+    return null;
+  },
+
   // Array validation
   array: (value, fieldName, min = 0, max = null) => {
     if (!value || value.length === 0) return `${fieldName} is required`;

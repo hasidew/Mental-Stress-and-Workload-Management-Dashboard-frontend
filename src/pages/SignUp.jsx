@@ -28,6 +28,7 @@ const SignUp = () => {
     hospital: "",
     username: "",
     password: "",
+    confirmPassword: "",
   });
 
   // Fetch departments on component mount
@@ -77,7 +78,8 @@ const SignUp = () => {
     }],
       jobRole: [(value) => validationRules.select(value, 'job role')],
       username: [validationRules.email],
-      password: [validationRules.password]
+      password: [validationRules.password],
+      confirmPassword: [validationRules.required, (value) => validationRules.passwordMatch(value, form.password)]
     };
 
     // Add role-specific validations
@@ -195,7 +197,8 @@ const SignUp = () => {
       showSuccess("Registration request submitted successfully! Please wait for admin approval. You will be notified once your account is approved.");
       navigate('/signin');
     } catch (error) {
-      showError(error.message || "Registration request failed. Please try again.");
+      console.error('Registration error:', error);
+      showError(typeof error.message === 'string' ? error.message : "Registration request failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -579,6 +582,26 @@ const SignUp = () => {
                   />
                   {touched.password && errors.password && (
                     <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[#212121] font-medium mb-2">Confirm Password <span className="text-red-500">*</span></label>
+                  <input 
+                    type="password" 
+                    name="confirmPassword" 
+                    required 
+                    minLength="8"
+                    className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                      touched.confirmPassword && errors.confirmPassword 
+                        ? 'border-red-500 focus:ring-red-500' 
+                        : 'border-gray-200 focus:ring-blue-500'
+                    }`}
+                    placeholder="Confirm your password"
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  {touched.confirmPassword && errors.confirmPassword && (
+                    <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
                   )}
                 </div>
               </div>

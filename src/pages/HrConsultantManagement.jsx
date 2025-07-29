@@ -4,7 +4,12 @@ import apiService from '../utils/api';
 import { useToast } from '../contexts/ToastContext';
 
 const HrPsychiatristManagement = () => {
+  const { getUserRole } = useAuth();
   const { showError, showSuccess } = useToast();
+  
+  // Check if user is HR manager
+  const isHrManager = getUserRole() === 'hr_manager';
+  
   const [psychiatrists, setPsychiatrists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -18,7 +23,7 @@ const HrPsychiatristManagement = () => {
     registration_number: '',
     hospital: '',
     specialization: '',
-    username: '',
+    email: '',
     password: '',
     availabilities: []
   });
@@ -66,7 +71,7 @@ const HrPsychiatristManagement = () => {
   const handleAddAvailability = () => {
     setFormData(prev => ({
       ...prev,
-      availabilities: [...prev.availabilities, { day_of_week: 0, start_time: '09:00', end_time: '17:00' }]
+      availabilities: [...prev.availabilities, { day_of_week: 0, start_time: '09:00', end_time: '17:00', is_available: true }]
     }));
   };
 
@@ -88,7 +93,16 @@ const HrPsychiatristManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!isHrManager) {
+      showError('Only HR managers can manage psychiatrists');
+      return;
+    }
+    
     try {
+      setIsSubmitting(true);
+      console.log('Submitting form data:', formData);
+      
       if (showEditModal) {
         await apiService.updatePsychiatrist(selectedPsychiatrist.id, formData);
         showSuccess('Psychiatrist updated successfully');
@@ -104,18 +118,77 @@ const HrPsychiatristManagement = () => {
         registration_number: '',
         hospital: '',
         specialization: '',
-        username: '',
+        email: '',
         password: '',
         availabilities: []
       });
       setSelectedPsychiatrist(null);
-      fetchPsychiatrists();
+      fetchPsychiatrists(); // Refresh the list
     } catch (error) {
-      showError(error.message || 'Failed to save psychiatrist');
+      console.error('Form submission error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
+      
+      let errorMessage = showEditModal ? 'Failed to update psychiatrist' : 'Failed to create psychiatrist';
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        console.error('Processing error data:', errorData);
+        
+        if (errorData.detail) {
+          errorMessage = String(errorData.detail);
+        } else if (Array.isArray(errorData)) {
+          // Handle Pydantic validation errors array
+          const messages = errorData.map(err => {
+            if (typeof err === 'string') return err;
+            if (err && typeof err === 'object' && err.msg) return String(err.msg);
+            return String(err);
+          });
+          errorMessage = messages.join(', ');
+        } else if (typeof errorData === 'object') {
+          // Handle validation errors object
+          const errorMessages = [];
+          for (const [field, errors] of Object.entries(errorData)) {
+            console.error(`Processing field ${field}:`, errors);
+            if (Array.isArray(errors)) {
+              errors.forEach(error => {
+                if (typeof error === 'string') {
+                  errorMessages.push(error);
+                } else if (error && typeof error === 'object' && error.msg) {
+                  errorMessages.push(String(error.msg));
+                } else {
+                  console.error('Unexpected error format:', error);
+                }
+              });
+            } else if (typeof errors === 'string') {
+              errorMessages.push(errors);
+            } else if (errors && typeof errors === 'object' && errors.msg) {
+              errorMessages.push(String(errors.msg));
+            } else {
+              console.error('Unexpected error format:', errors);
+            }
+          }
+          errorMessage = errorMessages.length > 0 ? errorMessages.join(', ') : 'Validation failed';
+        } else {
+          errorMessage = String(errorData);
+        }
+      } else if (typeof error.message === 'string') {
+        errorMessage = error.message;
+      }
+      
+      console.error('Final error message:', errorMessage);
+      showError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleEdit = (psychiatrist) => {
+    if (!isHrManager) {
+      showError('Only HR managers can edit psychiatrists');
+      return;
+    }
+    
     setSelectedPsychiatrist(psychiatrist);
     setFormData({
       name: psychiatrist.name,
@@ -123,7 +196,7 @@ const HrPsychiatristManagement = () => {
       registration_number: psychiatrist.registration_number,
       hospital: psychiatrist.hospital,
       specialization: psychiatrist.specialization,
-      username: psychiatrist.username,
+      email: psychiatrist.username, // Assuming username is email for editing
       password: '', // Password is not editable
       availabilities: psychiatrist.availabilities.map(avail => ({
         day_of_week: avail.day_of_week,
@@ -135,6 +208,11 @@ const HrPsychiatristManagement = () => {
   };
 
   const handleDelete = async (psychiatristId) => {
+    if (!isHrManager) {
+      showError('Only HR managers can delete psychiatrists');
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this psychiatrist? All scheduled appointments will be cancelled.')) {
       try {
         await apiService.deletePsychiatrist(psychiatristId);
@@ -173,17 +251,28 @@ const HrPsychiatristManagement = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Psychiatrist Management</h1>
-          <p className="text-gray-600 mt-2">Manage psychiatrists and their availability</p>
+          <p className="text-gray-600 mt-2">
+            Manage psychiatrists and their availability
+            {!isHrManager && <span className="text-red-600 font-medium"> - HR Manager access only</span>}
+          </p>
         </div>
 
         {/* Add Psychiatrist Button */}
         <div className="mb-6">
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Add New Psychiatrist
-          </button>
+          {isHrManager ? (
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Add New Psychiatrist
+            </button>
+          ) : (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-yellow-800 text-sm">
+                <strong>Access Restricted:</strong> Only HR managers can add, edit, or delete psychiatrists.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Psychiatrists List */}
@@ -203,6 +292,22 @@ const HrPsychiatristManagement = () => {
                   >
                     View Bookings
                   </button>
+                  {isHrManager && (
+                    <>
+                      <button
+                        onClick={() => handleEdit(psychiatrist)}
+                        className="text-yellow-600 hover:text-yellow-800 text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(psychiatrist.id)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -317,6 +422,30 @@ const HrPsychiatristManagement = () => {
                   />
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email <span className="text-red-500">*</span></label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Password <span className="text-red-500">*</span></label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      minLength="8"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <label className="block text-sm font-medium text-gray-700">Availability Schedule</label>
@@ -328,6 +457,9 @@ const HrPsychiatristManagement = () => {
                       Add Time Slot
                     </button>
                   </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    <strong>Note:</strong> Available booking slots are automatically generated in 30-minute intervals within your specified time ranges.
+                  </p>
                   
                   <div className="space-y-3">
                     {formData.availabilities.map((availability, index) => (
@@ -384,7 +516,7 @@ const HrPsychiatristManagement = () => {
                         registration_number: '',
                         hospital: '',
                         specialization: '',
-                        username: '',
+                        email: '',
                         password: '',
                         availabilities: []
                       });
