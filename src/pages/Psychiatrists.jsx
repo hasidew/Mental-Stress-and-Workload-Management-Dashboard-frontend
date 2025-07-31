@@ -90,23 +90,12 @@ const Psychiatrists = () => {
   const handleBookingSubmit = async () => {
     try {
       setLoading(true);
-      // Create the local datetime string
-      const localDateTime = `${selectedDate}T${bookingData.selectedSlot.start_time}`;
-      
-      // Parse the date and time components
-      const [year, month, day] = selectedDate.split('-').map(Number);
-      const [hour, minute] = bookingData.selectedSlot.start_time.split(':').map(Number);
-      
-      // Create a Date object representing local time
-      const localDate = new Date(year, month - 1, day, hour, minute, 0);
-      
-      // Convert to UTC
-      // For UTC+5:30, we need to subtract 5.5 hours to get UTC
-      const utcDateTime = new Date(localDate.getTime() - (5.5 * 60 * 60 * 1000));
+      // Create the local datetime string and send it directly
+      const localDateTime = `${selectedDate}T${bookingData.selectedSlot.start_time}:00`;
       
       const response = await api.bookPsychiatrist({
         psychiatrist_id: selectedPsychiatrist.id,
-        booking_date: utcDateTime.toISOString(),
+        booking_date: localDateTime,
         notes: bookingData.notes
       });
 

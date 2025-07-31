@@ -72,23 +72,12 @@ const HrDashboard = () => {
   const handleBookConsultant = async (e) => {
     e.preventDefault();
     try {
-      // Create the local datetime string
+      // Create the local datetime string and send it directly
       const localDateTime = `${bookingForm.booking_date}T${bookingForm.booking_time}:00`;
-      
-      // Parse the date and time components
-      const [year, month, day] = bookingForm.booking_date.split('-').map(Number);
-      const [hour, minute] = bookingForm.booking_time.split(':').map(Number);
-      
-      // Create a Date object representing local time
-      const localDate = new Date(year, month - 1, day, hour, minute, 0);
-      
-      // Convert to UTC
-      // For UTC+5:30, we need to subtract 5.5 hours to get UTC
-      const utcDateTime = new Date(localDate.getTime() - (5.5 * 60 * 60 * 1000));
       
       const bookingData = {
         psychiatrist_id: parseInt(bookingForm.consultant_id),
-        booking_date: utcDateTime.toISOString(),
+        booking_date: localDateTime,
         duration_minutes: bookingForm.duration_minutes,
         notes: bookingForm.notes
       };
@@ -442,8 +431,8 @@ const HrDashboard = () => {
               {[
                 { id: 'overview', name: 'Overview', icon: '📊' },
                 { id: 'stress-scores', name: 'Shared Stress Scores', icon: '📈' },
-                { id: 'consultants', name: 'Consultants', icon: '👨‍⚕️' },
-                { id: 'consultant-management', name: 'Manage Consultants', icon: '⚙️' }
+                { id: 'consultants', name: 'Psychiatrists', icon: '👨‍⚕️' },
+                { id: 'consultant-management', name: 'Manage Psychiatrists', icon: '⚙️' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -512,7 +501,7 @@ const HrDashboard = () => {
                         to="/consultants"
                         className="block w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center"
                       >
-                        View Available Consultants
+                        View Available Psychiatrists
                       </Link>
 
                     </div>
@@ -613,7 +602,7 @@ const HrDashboard = () => {
             {activeTab === 'consultants' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Available Consultants</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Available Psychiatrists</h3>
                   <button
                     onClick={() => setShowBookingModal(true)}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
@@ -683,7 +672,7 @@ const HrDashboard = () => {
             {activeTab === 'consultant-management' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Manage Consultants</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Manage Psychiatrists</h3>
                   <button
                     onClick={() => setShowCreateConsultantModal(true)}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"

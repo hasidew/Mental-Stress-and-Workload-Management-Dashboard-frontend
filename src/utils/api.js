@@ -698,6 +698,27 @@ class ApiService {
     });
   }
 
+  // Notification methods
+  async getMyNotifications() {
+    return await this.request('/notifications/my-notifications');
+  }
+
+  async getUnreadNotificationCount() {
+    return await this.request('/notifications/my-unread-count');
+  }
+
+  async markNotificationRead(notificationId) {
+    return await this.request(`/notifications/${notificationId}/mark-read`, {
+      method: 'PUT',
+    });
+  }
+
+  async markAllNotificationsRead() {
+    return await this.request('/notifications/mark-all-read', {
+      method: 'PUT',
+    });
+  }
+
   // User data refresh with role change detection
   async refreshUserData() {
     try {

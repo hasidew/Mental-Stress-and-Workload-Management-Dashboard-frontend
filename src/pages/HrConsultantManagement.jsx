@@ -576,8 +576,12 @@ const HrPsychiatristManagement = () => {
                           {booking.booked_by_name}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(booking.booking_date).toLocaleDateString()} at{' '}
-                          {new Date(booking.booking_date).toLocaleTimeString()}
+                          {new Date(booking.booking_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Colombo' })} at{' '}
+                          {new Date(booking.booking_date).toLocaleTimeString('en-GB', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            timeZone: 'Asia/Colombo'
+                          })}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {booking.duration_minutes} minutes

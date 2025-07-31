@@ -117,7 +117,7 @@ const SignIn = () => {
         <div className="bg-white rounded-2xl p-8 shadow-md">
           {/* Logo */}
           <div className="flex justify-center mb-6">
-            <img src="/images/logo.png" alt="MindCare Logo" className="w-16 h-16 object-contain" />
+            <img src="/images/logo.png" alt="MindEase Logo" className="w-16 h-16 object-contain" />
           </div>
           {/* Header */}
           <div className="text-center mb-8">

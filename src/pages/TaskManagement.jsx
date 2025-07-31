@@ -40,7 +40,7 @@ const TaskManagement = () => {
     try {
       const taskData = {
         ...formData,
-        due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null
+        due_date: formData.due_date ? `${formData.due_date}T00:00:00` : null
       };
       
       await apiService.createTask(taskData);
@@ -58,7 +58,7 @@ const TaskManagement = () => {
     try {
       const taskData = {
         ...formData,
-        due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null
+        due_date: formData.due_date ? `${formData.due_date}T00:00:00` : null
       };
       
       await apiService.updateTask(editingTask.id, taskData);
@@ -100,7 +100,7 @@ const TaskManagement = () => {
       title: task.title,
       description: task.description || '',
       priority: task.priority,
-      due_date: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : ''
+      due_date: task.due_date ? task.due_date.split('T')[0] : ''
     });
     setShowEditModal(true);
   };

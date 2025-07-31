@@ -41,23 +41,12 @@ const Psychiatrists = () => {
     e.preventDefault();
     
     try {
-      // Create the local datetime string
+      // Create the local datetime string and send it directly
       const localDateTime = `${bookingData.booking_date}T${bookingData.booking_time}:00`;
-      
-      // Parse the date and time components
-      const [year, month, day] = bookingData.booking_date.split('-').map(Number);
-      const [hour, minute] = bookingData.booking_time.split(':').map(Number);
-      
-      // Create a Date object representing local time
-      const localDate = new Date(year, month - 1, day, hour, minute, 0);
-      
-      // Convert to UTC
-      // For UTC+5:30, we need to subtract 5.5 hours to get UTC
-      const utcDateTime = new Date(localDate.getTime() - (5.5 * 60 * 60 * 1000));
       
       const bookingPayload = {
         psychiatrist_id: parseInt(bookingData.psychiatrist_id),
-        booking_date: utcDateTime.toISOString(),
+        booking_date: localDateTime,
         duration_minutes: bookingData.duration_minutes,
         notes: bookingData.notes
       };

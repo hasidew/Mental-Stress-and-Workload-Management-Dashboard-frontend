@@ -8,12 +8,12 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="col-span-1 md:col-span-2">
-            <h3 className="text-xl font-bold mb-4">MindCare</h3>
+            <h3 className="text-xl font-bold mb-4">MindEase</h3>
             <p className="text-gray-300 mb-4">
               Dedicated to revolutionizing mental wellness in the workplace through innovative technology and compassionate care.
             </p>
             <div className="flex space-x-4">
-              <span className="text-gray-300">📧 support@mindcare.com</span>
+              <span className="text-gray-300">📧 support@mindease.com</span>
               <span className="text-gray-300">📞 +94 768130758</span>
             </div>
           </div>
@@ -45,7 +45,7 @@ const Footer = () => {
         {/* Bottom Section */}
         <div className="border-t border-gray-700 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-300 text-sm">
-            © 2024 MindCare. All rights reserved.
+            © 2024 MindEase. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <Link to="/privacy" className="text-gray-300 hover:text-white text-sm transition-colors">Privacy Policy</Link>

@@ -62,21 +62,21 @@ const Contact = () => {
     {
       title: 'General Support',
       description: 'For general questions and platform support',
-      email: 'support@mindcare.com',
+      email: 'support@mindease.com',
       phone: '+94 768130758',
       icon: '💬'
     },
     {
       title: 'Technical Issues',
       description: 'For technical problems and bug reports',
-      email: 'tech@mindcare.com',
+      email: 'tech@mindease.com',
       phone: '+94 768130759',
       icon: '🔧'
     },
     {
       title: 'Mental Health Crisis',
       description: 'For immediate mental health support',
-      email: 'crisis@mindcare.com',
+      email: 'crisis@mindease.com',
       phone: '+94 768130760',
       icon: '🚨'
     }

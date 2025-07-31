@@ -2,6 +2,7 @@ import React from 'react'
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -63,12 +64,12 @@ const Navbar = () => {
                 <div className="flex justify-between items-center h-16">
                     {/* Logo */}
                     <Link to="/" className="flex items-center space-x-3 group">
-                        <img src="/images/logo.png" alt="MindCare Logo" className="w-10 h-10 object-contain" />
+                        <img src="/images/logo.png" alt="MindEase Logo" className="w-10 h-10 object-contain" />
                         <div className="hidden sm:block">
                             <h1 className="text-xl font-bold text-[#212121] group-hover:text-blue-600 transition-colors">
-                                MindCare
+                                MindEase
                             </h1>
-                            <p className="text-xs text-[#4F4F4F]">Mental Wellness Platform</p>
+                            <p className="text-xs text-[#4F4F4F]">Ease your workload. Free your mind.</p>
                         </div>
                     </Link>
 
@@ -93,6 +94,33 @@ const Navbar = () => {
                                         {item.label}
                                     </Link>
                                 ))}
+                                
+                                {/* Notification Bell */}
+                                <NotificationBell />
+                                
+                                {/* User Menu */}
+                                <div className="relative ml-4">
+                                    <button
+                                        onClick={() => setIsOpen(!isOpen)}
+                                        className="flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium text-[#212121] hover:bg-gray-100 transition-all duration-200"
+                                    >
+                                        <span>Account</span>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                    
+                                    {isOpen && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
+                                            <button
+                                                onClick={handleLogout}
+                                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            >
+                                                Logout
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </>
                         ) : (
                             <>
@@ -109,38 +137,21 @@ const Navbar = () => {
                                         {item.label}
                                     </Link>
                                 ))}
-                            </>
-                        )}
-                    </div>
-
-                    {/* Auth Buttons */}
-                    <div className="hidden md:flex items-center space-x-4">
-                        {isAuthenticated() ? (
-                            <>
-                                <span className="text-sm text-gray-600">
-                                    Welcome, {getUserRole()} (Role: {getUserRole()})
-                                </span>
-                                <button
-                                    onClick={handleLogout}
-                                    className="text-red-600 hover:text-red-800 font-medium transition-colors px-5 py-2 rounded-xl hover:bg-red-50"
-                                >
-                                    Logout
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <Link
-                                    to="/signin"
-                                    className="text-[#212121] hover:text-blue-600 font-medium transition-colors px-5 py-2 rounded-xl hover:bg-gray-100"
-                                >
-                                    Sign In
-                                </Link>
-                                <Link
-                                    to="/signup"
-                                    className="bg-gradient-to-r from-[#212121] to-gray-800 text-white px-5 py-2 rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105"
-                                >
-                                    Get Started
-                                </Link>
+                                
+                                <div className="flex items-center space-x-2 ml-4">
+                                    <Link
+                                        to="/signin"
+                                        className="px-4 py-2 text-sm font-medium text-[#212121] hover:text-blue-600 transition-colors"
+                                    >
+                                        Sign In
+                                    </Link>
+                                    <Link
+                                        to="/signup"
+                                        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors"
+                                    >
+                                        Sign Up
+                                    </Link>
+                                </div>
                             </>
                         )}
                     </div>
@@ -149,121 +160,93 @@ const Navbar = () => {
                     <div className="md:hidden">
                         <button
                             onClick={() => setIsOpen(!isOpen)}
-                            className="inline-flex items-center justify-center p-2 rounded-xl text-[#212121] hover:text-blue-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition-all duration-200"
-                            aria-expanded="false"
+                            className="text-[#212121] hover:text-blue-600 transition-colors"
                         >
-                            <span className="sr-only">Open main menu</span>
-                            {/* Icon when menu is closed */}
-                            <svg
-                                className={`${isOpen ? 'hidden' : 'block'} h-6 w-6`}
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                aria-hidden="true"
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                            {/* Icon when menu is open */}
-                            <svg
-                                className={`${isOpen ? 'block' : 'hidden'} h-6 w-6`}
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                aria-hidden="true"
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
                     </div>
                 </div>
-            </div>
 
-            {/* Mobile menu */}
-            <div className={`md:hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                <div className="px-2 pt-2 pb-3 space-y-1 bg-white/95 backdrop-blur-md border-t border-gray-100">
-                    {isAuthenticated() ? (
-                        <>
-                            {(getUserRole() === 'admin' ? adminNavItems : 
-                              getUserRole() === 'supervisor' ? supervisorNavItems :
-                              getUserRole() === 'psychiatrist' ? psychiatristNavItems :
-                              getUserRole() === 'hr_manager' ? hrNavItems :
-                              authenticatedLinks).map((item) => (
-                                <Link
-                                    key={item.path}
-                                    to={item.path}
-                                    onClick={() => setIsOpen(false)}
-                                    className={`flex items-center px-3 py-3 rounded-xl text-base font-medium transition-all duration-200 ${
-                                        isActive(item.path)
-                                            ? 'bg-blue-600 text-white shadow-lg'
-                                            : 'text-[#212121] hover:bg-gray-100 hover:text-blue-600'
-                                    }`}
-                                >
-                                    {item.label}
-                                </Link>
-                            ))}
-                            
-                            {/* Mobile Auth Buttons */}
-                            <div className="pt-4 pb-3 border-t border-gray-200">
-                                <div className="space-y-2">
-                                    <div className="text-center text-sm text-gray-600 mb-2">
-                                        Welcome, {getUserRole()}
+                {/* Mobile Navigation */}
+                {isOpen && (
+                    <div className="md:hidden">
+                        <div className="px-2 pt-2 pb-3 space-y-1">
+                            {isAuthenticated() ? (
+                                <>
+                                    {(getUserRole() === 'admin' ? adminNavItems : 
+                                      getUserRole() === 'supervisor' ? supervisorNavItems :
+                                      getUserRole() === 'psychiatrist' ? psychiatristNavItems :
+                                      getUserRole() === 'hr_manager' ? hrNavItems :
+                                      authenticatedLinks).map((item) => (
+                                        <Link
+                                            key={item.path}
+                                            to={item.path}
+                                            className={`block px-3 py-2 rounded-md text-base font-medium ${
+                                                isActive(item.path)
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'text-[#212121] hover:bg-gray-100'
+                                            }`}
+                                            onClick={() => setIsOpen(false)}
+                                        >
+                                            {item.label}
+                                        </Link>
+                                    ))}
+                                    
+                                    {/* Mobile Notification Bell */}
+                                    <div className="px-3 py-2">
+                                        <NotificationBell />
                                     </div>
+                                    
                                     <button
                                         onClick={handleLogout}
-                                        className="flex items-center justify-center w-full px-3 py-3 rounded-xl text-base font-medium text-red-600 hover:bg-red-50 transition-all duration-200"
+                                        className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-[#212121] hover:bg-gray-100"
                                     >
-                                        <span className="mr-2">🚪</span>
                                         Logout
                                     </button>
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            {publicLinks.map((item) => (
-                                <Link
-                                    key={item.path}
-                                    to={item.path}
-                                    onClick={() => setIsOpen(false)}
-                                    className={`flex items-center px-3 py-3 rounded-xl text-base font-medium transition-all duration-200 ${
-                                        isActive(item.path)
-                                            ? 'bg-blue-600 text-white shadow-lg'
-                                            : 'text-[#212121] hover:bg-gray-100 hover:text-blue-600'
-                                    }`}
-                                >
-                                    {item.label}
-                                </Link>
-                            ))}
-                            
-                            {/* Mobile Auth Buttons */}
-                            <div className="pt-4 pb-3 border-t border-gray-200">
-                                <div className="space-y-2">
-                                    <Link
-                                        to="/signin"
-                                        onClick={() => setIsOpen(false)}
-                                        className="flex items-center justify-center px-3 py-3 rounded-xl text-base font-medium text-[#212121] hover:bg-gray-100 hover:text-blue-600 transition-all duration-200"
-                                    >
-                                        <span className="mr-2">🔑</span>
-                                        Sign In
-                                    </Link>
-                                    <Link
-                                        to="/signup"
-                                        onClick={() => setIsOpen(false)}
-                                        className="flex items-center justify-center px-3 py-3 rounded-xl text-base font-medium bg-gradient-to-r from-[#212121] to-gray-800 text-white hover:shadow-lg transition-all duration-300 hover:scale-105"
-                                    >
-                                        <span className="mr-2">🚀</span>
-                                        Get Started
-                                    </Link>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
+                                </>
+                            ) : (
+                                <>
+                                    {publicLinks.map((item) => (
+                                        <Link
+                                            key={item.path}
+                                            to={item.path}
+                                            className={`block px-3 py-2 rounded-md text-base font-medium ${
+                                                isActive(item.path)
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'text-[#212121] hover:bg-gray-100'
+                                            }`}
+                                            onClick={() => setIsOpen(false)}
+                                        >
+                                            {item.label}
+                                        </Link>
+                                    ))}
+                                    
+                                    <div className="pt-4 pb-3 border-t border-gray-200">
+                                        <Link
+                                            to="/signin"
+                                            className="block px-3 py-2 rounded-md text-base font-medium text-[#212121] hover:bg-gray-100"
+                                            onClick={() => setIsOpen(false)}
+                                        >
+                                            Sign In
+                                        </Link>
+                                        <Link
+                                            to="/signup"
+                                            className="block px-3 py-2 rounded-md text-base font-medium text-[#212121] hover:bg-gray-100"
+                                            onClick={() => setIsOpen(false)}
+                                        >
+                                            Sign Up
+                                        </Link>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </nav>
-    )
-}
+    );
+};
 
-export default Navbar
+export default Navbar;

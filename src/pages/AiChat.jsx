@@ -8,7 +8,11 @@ const AiChat = () => {
       id: 1,
       type: 'ai',
       content: "Hello! I'm your AI wellness assistant. I'm here to help you with stress management, workload balance, and mental wellness tips. How can I assist you today?",
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: new Date().toLocaleTimeString('en-GB', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Colombo'
+      })
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
@@ -39,7 +43,11 @@ const AiChat = () => {
       id: Date.now(),
       type: 'user',
       content: inputMessage,
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: new Date().toLocaleTimeString('en-GB', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Colombo'
+      })
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -53,7 +61,11 @@ const AiChat = () => {
         id: Date.now() + 1,
         type: 'ai',
         content: aiResponse,
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: new Date().toLocaleTimeString('en-GB', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          timeZone: 'Asia/Colombo'
+        })
       };
       setMessages(prev => [...prev, aiMessage]);
       setIsTyping(false);

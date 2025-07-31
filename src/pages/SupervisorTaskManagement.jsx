@@ -48,7 +48,7 @@ const SupervisorTaskManagement = () => {
         title: formData.title,
         description: formData.description,
         priority: formData.priority,
-        due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null
+        due_date: formData.due_date ? `${formData.due_date}T00:00:00` : null
       };
       
       await apiService.supervisorCreateTask(taskData, parseInt(formData.employee_id));
@@ -68,7 +68,7 @@ const SupervisorTaskManagement = () => {
         title: formData.title,
         description: formData.description,
         priority: formData.priority,
-        due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null
+        due_date: formData.due_date ? `${formData.due_date}T00:00:00` : null
       };
       
       await apiService.supervisorUpdateTask(editingTask.id, taskData);
@@ -100,8 +100,8 @@ const SupervisorTaskManagement = () => {
       title: task.title,
       description: task.description || '',
       priority: task.priority,
-      due_date: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
-      employee_id: task.employee_id.toString()
+      due_date: task.due_date ? task.due_date.split('T')[0] : '',
+      employee_id: task.employee_id ? task.employee_id.toString() : ''
     });
     setShowEditModal(true);
   };
