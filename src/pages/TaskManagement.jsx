@@ -15,7 +15,6 @@ const TaskManagement = () => {
     title: '',
     description: '',
     priority: 'medium',
-    assigned_date: new Date().toISOString().split('T')[0], // Default to today
     duration: '',
     due_date: ''
   });
@@ -42,7 +41,6 @@ const TaskManagement = () => {
     try {
       const taskData = {
         ...formData,
-        assigned_date: formData.assigned_date ? `${formData.assigned_date}T00:00:00` : null,
         duration: formData.duration ? parseInt(formData.duration) * 60 : null, // Convert hours to minutes
         due_date: formData.due_date ? `${formData.due_date}T00:00:00` : null
       };
@@ -50,7 +48,7 @@ const TaskManagement = () => {
       await apiService.createTask(taskData);
       showSuccess('Task created successfully!');
       setShowCreateModal(false);
-      setFormData({ title: '', description: '', priority: 'medium', assigned_date: new Date().toISOString().split('T')[0], duration: '', due_date: '' });
+      setFormData({ title: '', description: '', priority: 'medium', duration: '', due_date: '' });
       fetchTasks();
     } catch (error) {
       showError(error.message || 'Failed to create task');
@@ -62,7 +60,6 @@ const TaskManagement = () => {
     try {
       const taskData = {
         ...formData,
-        assigned_date: formData.assigned_date ? `${formData.assigned_date}T00:00:00` : null,
         duration: formData.duration ? parseInt(formData.duration) * 60 : null, // Convert hours to minutes
         due_date: formData.due_date ? `${formData.due_date}T00:00:00` : null
       };
@@ -71,7 +68,7 @@ const TaskManagement = () => {
       showSuccess('Task updated successfully!');
       setShowEditModal(false);
       setEditingTask(null);
-      setFormData({ title: '', description: '', priority: 'medium', assigned_date: new Date().toISOString().split('T')[0], duration: '', due_date: '' });
+      setFormData({ title: '', description: '', priority: 'medium', duration: '', due_date: '' });
       fetchTasks();
     } catch (error) {
       showError(error.message || 'Failed to update task');
@@ -106,7 +103,6 @@ const TaskManagement = () => {
       title: task.title,
       description: task.description || '',
       priority: task.priority,
-      assigned_date: task.assigned_date ? task.assigned_date.split('T')[0] : new Date().toISOString().split('T')[0],
       duration: task.duration ? Math.floor(task.duration / 60) : '', // Convert minutes to hours
       due_date: task.due_date ? task.due_date.split('T')[0] : ''
     });
@@ -251,9 +247,6 @@ const TaskManagement = () => {
                         )}
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           <span>Created: {new Date(task.created_at).toLocaleDateString()}</span>
-                          {task.assigned_date && (
-                            <span>Assigned: {new Date(task.assigned_date).toLocaleDateString()}</span>
-                          )}
                           {task.duration && (
                             <span>Duration: {Math.floor(task.duration / 60)} hours</span>
                           )}
@@ -304,7 +297,7 @@ const TaskManagement = () => {
           <CreateTaskModal
             onClose={() => {
               setShowCreateModal(false);
-              setFormData({ title: '', description: '', priority: 'medium', assigned_date: new Date().toISOString().split('T')[0], duration: '', due_date: '' });
+              setFormData({ title: '', description: '', priority: 'medium', duration: '', due_date: '' });
             }}
             onSubmit={handleCreateTask}
             formData={formData}
@@ -318,7 +311,7 @@ const TaskManagement = () => {
             onClose={() => {
               setShowEditModal(false);
               setEditingTask(null);
-              setFormData({ title: '', description: '', priority: 'medium', assigned_date: new Date().toISOString().split('T')[0], duration: '', due_date: '' });
+              setFormData({ title: '', description: '', priority: 'medium', duration: '', due_date: '' });
             }}
             onSubmit={handleUpdateTask}
             formData={formData}
@@ -386,17 +379,7 @@ const CreateTaskModal = ({ onClose, onSubmit, formData, setFormData }) => {
             </select>
           </div>
           
-          <div>
-            <label className="block text-[#212121] font-medium mb-2">Assigned Date <span className="text-red-500">*</span></label>
-            <input
-              type="date"
-              name="assigned_date"
-              value={formData.assigned_date}
-              onChange={handleChange}
-              required
-              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+
 
           <div>
             <label className="block text-[#212121] font-medium mb-2">Duration (hours)</label>
@@ -497,17 +480,7 @@ const EditTaskModal = ({ onClose, onSubmit, formData, setFormData, task }) => {
             </select>
           </div>
           
-          <div>
-            <label className="block text-[#212121] font-medium mb-2">Assigned Date <span className="text-red-500">*</span></label>
-            <input
-              type="date"
-              name="assigned_date"
-              value={formData.assigned_date}
-              onChange={handleChange}
-              required
-              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+
 
           <div>
             <label className="block text-[#212121] font-medium mb-2">Duration (hours)</label>

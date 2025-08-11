@@ -608,6 +608,10 @@ class ApiService {
     return await this.request('/stress/my-score');
   }
 
+  async getWorkloadDetails() {
+    return await this.request('/stress/workload-details');
+  }
+
   async updateStressSharing(sharingData) {
     return await this.request('/stress/update-sharing', {
       method: 'PUT',

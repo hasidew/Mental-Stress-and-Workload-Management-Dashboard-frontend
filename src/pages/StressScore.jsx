@@ -10,6 +10,7 @@ const StressScore = () => {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [currentScore, setCurrentScore] = useState(null);
+  const [workloadDetails, setWorkloadDetails] = useState(null);
   const [sharingPreferences, setSharingPreferences] = useState({
     share_with_supervisor: false,
     share_with_hr: false
@@ -25,6 +26,7 @@ const StressScore = () => {
   useEffect(() => {
     fetchQuestions();
     fetchCurrentScore();
+    fetchWorkloadDetails();
   }, []);
 
   const fetchQuestions = async () => {
@@ -55,6 +57,15 @@ const StressScore = () => {
     }
   };
 
+  const fetchWorkloadDetails = async () => {
+    try {
+      const data = await apiService.getWorkloadDetails();
+      setWorkloadDetails(data);
+    } catch (error) {
+      console.log('Failed to fetch workload details');
+    }
+  };
+
   const handleAnswerChange = (questionIndex, value) => {
     setAnswers(prev => ({
       ...prev,
@@ -62,11 +73,23 @@ const StressScore = () => {
     }));
   };
 
+  // Helper function to get answer label
+  const getAnswerLabel = (value) => {
+    const labels = {
+      0: 'Never',
+      1: 'Almost Never', 
+      2: 'Sometimes',
+      3: 'Often',
+      4: 'Very Often'
+    };
+    return labels[value] || '';
+  };
+
   const handleSubmitAssessment = async () => {
     // Check if all questions are answered
     const answerArray = [];
     for (let i = 0; i < questions.length; i++) {
-      if (!answers[i]) {
+      if (answers[i] === undefined || answers[i] === null) {
         showError('Please answer all questions');
         return;
       }
@@ -82,12 +105,22 @@ const StressScore = () => {
       });
       
       showSuccess(result.message);
+      
+      // Update current score with all the new fields
       setCurrentScore({
+        id: result.id,
         score: result.score,
         level: result.level,
+        pss_score: result.pss_score,
+        normalized_pss: result.normalized_pss,
+        workload_stress_score: result.workload_stress_score,
+        total_hours_worked: result.total_hours_worked,
         share_with_supervisor: sharingPreferences.share_with_supervisor,
         share_with_hr: sharingPreferences.share_with_hr
       });
+      
+      // Refresh workload details
+      await fetchWorkloadDetails();
       
       // Reset form
       setAnswers({});
@@ -114,17 +147,19 @@ const StressScore = () => {
   const getStressLevelColor = (level) => {
     switch (level) {
       case 'low': return 'text-green-600 bg-green-100';
-      case 'medium': return 'text-yellow-600 bg-yellow-100';
-      case 'high': return 'text-red-600 bg-red-100';
+      case 'moderate': return 'text-yellow-600 bg-yellow-100';
+      case 'high': return 'text-orange-600 bg-orange-100';
+      case 'critical': return 'text-red-600 bg-red-100';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
 
   const getStressLevelDescription = (level) => {
     switch (level) {
-      case 'low': return 'You are managing stress well. Keep up the good work!';
-      case 'medium': return 'You are experiencing moderate stress. Consider stress management techniques.';
-      case 'high': return 'You are experiencing high stress levels. Consider seeking support or professional help.';
+      case 'low': return 'Low stress level (0-3) - You are managing stress well. Keep up the good work!';
+      case 'moderate': return 'Moderate stress level (4-6) - You are experiencing moderate stress. Consider stress management techniques.';
+      case 'high': return 'High stress level (7-8.5) - You are experiencing high stress levels. Consider seeking support or professional help.';
+      case 'critical': return 'Critical stress level (8.6+) - Immediate support recommended. Please seek professional help.';
       default: return '';
     }
   };
@@ -157,7 +192,7 @@ const StressScore = () => {
             <div className="bg-white rounded-2xl p-6 shadow-md">
               <h2 className="text-xl font-semibold text-[#212121] mb-4">Your Current Stress Score</h2>
               <div className="text-center mb-6">
-                <div className="text-4xl font-bold text-blue-600 mb-2">{currentScore.score}/40</div>
+                <div className="text-4xl font-bold text-blue-600 mb-2">{currentScore.score.toFixed(1)}/10</div>
                 <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStressLevelColor(currentScore.level)}`}>
                   {currentScore.level.toUpperCase()} STRESS
                 </span>
@@ -165,6 +200,104 @@ const StressScore = () => {
               <p className="text-[#4F4F4F] mb-4 text-center">
                 {getStressLevelDescription(currentScore.level)}
               </p>
+              
+              {/* Score Explanation */}
+              <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                <p className="text-xs text-gray-600 text-center">
+                  <strong>How to interpret:</strong> A score of 0-3 indicates low stress, 4-6 moderate stress, 
+                  7-8.5 high stress, and 8.6+ critical stress. Even with all "Never" answers, 
+                  you may score in the moderate range due to PSS-10 reverse scoring methodology.
+                </p>
+                <p className="text-xs text-gray-500 text-center mt-1">
+                  <strong>Note:</strong> PSS-10 maximum score is 24/40 (not 40/40) due to reverse scoring design.
+                </p>
+              </div>
+              
+              {/* Detailed Breakdown */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Score Breakdown</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">PSS Score:</span>
+                    <span className="font-medium">{currentScore.pss_score?.toFixed(1) || '0.0'}/40</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Normalized PSS:</span>
+                    <span className="font-medium">{currentScore.normalized_pss?.toFixed(1) || '0.0'}/10</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Workload Stress:</span>
+                    <span className="font-medium">{currentScore.workload_stress_score?.toFixed(1) || '0.0'}/2</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Hours Worked:</span>
+                    <span className="font-medium">{currentScore.total_hours_worked?.toFixed(1) || '0.0'} hrs</span>
+                  </div>
+                </div>
+                
+                {/* Workload Details */}
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <h4 className="text-xs font-semibold text-gray-600 mb-2">Workload Factors</h4>
+                  {workloadDetails ? (
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Total Tasks:</span>
+                        <span className="font-medium">{workloadDetails.total_tasks}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">High Priority:</span>
+                        <span className="font-medium text-red-600">{workloadDetails.high_priority_tasks}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Overdue:</span>
+                        <span className="font-medium text-orange-600">{workloadDetails.overdue_tasks}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Pending:</span>
+                        <span className="font-medium text-yellow-600">{workloadDetails.pending_tasks}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Completed:</span>
+                        <span className="font-medium text-green-600">{workloadDetails.completed_tasks}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">FTE Standard:</span>
+                        <span className="font-medium">{workloadDetails.fte_standard} hrs</span>
+                      </div>
+                      
+                      {/* Stress Component Breakdown */}
+                      <div className="pt-2 border-t border-gray-200">
+                        <div className="text-xs font-semibold text-gray-600 mb-1">Stress Components:</div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Base Stress:</span>
+                            <span className="font-medium">{workloadDetails.base_workload_stress?.toFixed(1) || '0.0'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Priority Stress:</span>
+                            <span className="font-medium">{workloadDetails.priority_stress?.toFixed(1) || '0.0'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Overdue Stress:</span>
+                            <span className="font-medium">{workloadDetails.overdue_stress?.toFixed(1) || '0.0'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Pending Stress:</span>
+                            <span className="font-medium">{workloadDetails.pending_stress?.toFixed(1) || '0.0'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500">
+                      <p>• Base stress from hours worked (FTE: 7.22 hrs)</p>
+                      <p>• Additional stress from high priority tasks</p>
+                      <p>• Stress from overdue tasks</p>
+                      <p>• Stress from pending task volume</p>
+                    </div>
+                  )}
+                </div>
+              </div>
               
               <div className="space-y-3 mb-6">
                 {!isSupervisor && (
@@ -207,14 +340,28 @@ const StressScore = () => {
             
             <div className="mb-6">
               <p className="text-sm text-gray-600 mb-4">
-                Rate how often you have felt or thought a certain way in the last month:
+                Rate how often you have felt or thought a certain way during the past 24 hours:
               </p>
-              <div className="grid grid-cols-5 gap-2 text-xs text-center">
-                <div className="p-2 bg-gray-100 rounded">1 = Never</div>
-                <div className="p-2 bg-gray-100 rounded">2 = Almost Never</div>
-                <div className="p-2 bg-gray-100 rounded">3 = Sometimes</div>
-                <div className="p-2 bg-gray-100 rounded">4 = Fairly Often</div>
-                <div className="p-2 bg-gray-100 rounded">5 = Very Often</div>
+              <div className="grid grid-cols-5 gap-2 text-xs text-center mb-3">
+                <div className="p-2 bg-gray-100 rounded">0 = Never</div>
+                <div className="p-2 bg-gray-100 rounded">1 = Almost Never</div>
+                <div className="p-2 bg-gray-100 rounded">2 = Sometimes</div>
+                <div className="p-2 bg-gray-100 rounded">3 = Often</div>
+                <div className="p-2 bg-gray-100 rounded">4 = Very Often</div>
+              </div>
+              
+              {/* Important Note */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-800">
+                  <strong>Important:</strong> Some questions are phrased positively (e.g., "You felt sure you could solve your problems"). 
+                  For these questions, selecting "0 = Never" means you never felt confident, which contributes to stress. 
+                  This is the correct PSS-10 methodology.
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  <a href="/PSS_10_SCORING_EXPLANATION.md" target="_blank" className="underline hover:text-blue-800">
+                    📖 Learn more about PSS-10 scoring methodology
+                  </a>
+                </p>
               </div>
             </div>
 
@@ -223,7 +370,7 @@ const StressScore = () => {
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
                   <p className="text-sm text-[#212121] mb-3">{question}</p>
                   <div className="flex justify-between">
-                    {[1, 2, 3, 4, 5].map((value) => (
+                    {[0, 1, 2, 3, 4].map((value) => (
                       <label key={value} className="flex flex-col items-center">
                         <input
                           type="radio"
