@@ -6,7 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { validateForm, validationRules } from '../utils/validation';
 
 const AdminDashboard = () => {
-  const { getUserRole, setUserRole, user } = useAuth();
+  const { getUserRole, user } = useAuth();
   const { showError, showSuccess } = useToast();
   const [dashboardData, setDashboardData] = useState(null);
   const [users, setUsers] = useState([]);

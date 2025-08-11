@@ -8,9 +8,21 @@ const SupervisorStressMonitoring = () => {
   const { showSuccess, showError } = useToast();
   const [stressData, setStressData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [psychiatrists, setPsychiatrists] = useState([]);
+  const [selectedPsychiatrist, setSelectedPsychiatrist] = useState(null);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [timetable, setTimetable] = useState(null);
+  const [bookingData, setBookingData] = useState({
+    notes: '',
+    selectedSlot: null
+  });
+  const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
     fetchStressData();
+    fetchPsychiatrists();
   }, []);
 
   const fetchStressData = async () => {
@@ -23,6 +35,84 @@ const SupervisorStressMonitoring = () => {
       console.error('Error fetching stress data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPsychiatrists = async () => {
+    try {
+      const response = await apiService.getAvailablePsychiatrists();
+      setPsychiatrists(response);
+    } catch (error) {
+      console.error('Error fetching psychiatrists:', error);
+    }
+  };
+
+  const fetchTimetable = async (psychiatristId, date) => {
+    try {
+      setBookingLoading(true);
+      const response = await apiService.getPsychiatristTimetable(psychiatristId, date);
+      setTimetable(response);
+    } catch (error) {
+      console.error('Error fetching timetable:', error);
+      showError('Failed to load timetable');
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  const handleBookSession = (member) => {
+    setSelectedMember(member);
+    setSelectedDate(new Date().toISOString().slice(0, 10));
+    setShowBookingModal(true);
+  };
+
+  const handlePsychiatristSelect = (psychiatrist) => {
+    setSelectedPsychiatrist(psychiatrist);
+    fetchTimetable(psychiatrist.id, selectedDate);
+  };
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+    if (selectedPsychiatrist) {
+      fetchTimetable(selectedPsychiatrist.id, date);
+    }
+  };
+
+  const handleSlotSelect = (slot) => {
+    if (!slot.available) {
+      showError('This slot is already booked');
+      return;
+    }
+    setBookingData({
+      notes: '',
+      selectedSlot: slot
+    });
+  };
+
+  const handleBookingSubmit = async () => {
+    try {
+      setBookingLoading(true);
+      const localDateTime = `${selectedDate}T${bookingData.selectedSlot.start_time}:00`;
+      
+      const bookingPayload = {
+        psychiatrist_id: selectedPsychiatrist.id,
+        booking_date: localDateTime,
+        notes: bookingData.notes
+      };
+
+      await apiService.bookPsychiatristForEmployee(bookingPayload, selectedMember.employee_id);
+      showSuccess(`Psychiatrist session booked for ${selectedMember.employee_name} successfully`);
+
+      setShowBookingModal(false);
+      setSelectedMember(null);
+      setSelectedPsychiatrist(null);
+      setTimetable(null);
+      setBookingData({ notes: '', selectedSlot: null });
+    } catch (error) {
+      console.error('Booking error:', error);
+      showError(typeof error.message === 'string' ? error.message : 'Failed to book session');
+    } finally {
+      setBookingLoading(false);
     }
   };
 
@@ -148,6 +238,16 @@ const SupervisorStressMonitoring = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Book Session Button */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => handleBookSession(member)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      📅 Book Psychiatrist Session
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -176,9 +276,154 @@ const SupervisorStressMonitoring = () => {
             <p className="text-sm">
               • Consider reaching out to team members with high stress levels to offer support.
             </p>
+            <p className="text-sm">
+              • <strong>New:</strong> You can now book psychiatrist sessions for team members who may need support.
+            </p>
           </div>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {showBookingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold">
+                Book Psychiatrist Session for {selectedMember?.employee_name}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowBookingModal(false);
+                  setSelectedMember(null);
+                  setSelectedPsychiatrist(null);
+                  setTimetable(null);
+                  setBookingData({ notes: '', selectedSlot: null });
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Psychiatrist Selection */}
+              <div>
+                <h4 className="text-md font-semibold mb-4">Select Psychiatrist</h4>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {psychiatrists.map((psychiatrist) => (
+                    <div
+                      key={psychiatrist.id}
+                      className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                        selectedPsychiatrist?.id === psychiatrist.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => handlePsychiatristSelect(psychiatrist)}
+                    >
+                      <h5 className="font-semibold text-gray-900">{psychiatrist.name}</h5>
+                      <p className="text-sm text-gray-600">{psychiatrist.specialization}</p>
+                      <p className="text-xs text-gray-500">{psychiatrist.hospital}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Timetable */}
+              <div>
+                <h4 className="text-md font-semibold mb-4">Select Date & Time</h4>
+                <div className="mb-4">
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => handleDateChange(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 w-full"
+                    min={new Date().toISOString().slice(0, 10)}
+                  />
+                </div>
+
+                {selectedPsychiatrist && timetable ? (
+                  <div>
+                    {timetable.available ? (
+                      <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                        {timetable.slots.map((slot, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleSlotSelect(slot)}
+                            disabled={!slot.available}
+                            className={`p-3 rounded-lg text-center transition-all text-sm ${
+                              slot.available
+                                ? bookingData.selectedSlot === slot
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-blue-50 border border-blue-200 hover:bg-blue-100 cursor-pointer'
+                                : 'bg-gray-100 border border-gray-200 cursor-not-allowed'
+                            }`}
+                          >
+                            <div className="font-medium">
+                              {slot.start_time} - {slot.end_time}
+                            </div>
+                            {!slot.available && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {slot.status === 'pending' ? 'Pending' : 'Booked'}
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        No availability for this date
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    {selectedPsychiatrist ? 'Select a date to view availability' : 'Select a psychiatrist first'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notes (optional)
+              </label>
+              <textarea
+                value={bookingData.notes}
+                onChange={(e) => setBookingData({ ...bookingData, notes: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="3"
+                placeholder="Any specific concerns or topics to discuss..."
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowBookingModal(false);
+                  setSelectedMember(null);
+                  setSelectedPsychiatrist(null);
+                  setTimetable(null);
+                  setBookingData({ notes: '', selectedSlot: null });
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBookingSubmit}
+                disabled={bookingLoading || !bookingData.selectedSlot}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {bookingLoading ? 'Booking...' : 'Book Session'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

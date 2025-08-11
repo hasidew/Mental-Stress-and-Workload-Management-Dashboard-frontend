@@ -25,9 +25,7 @@ import Contact from './pages/Contact'
 import { ToastProvider } from './contexts/ToastContext'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
-import DebugInfo from './components/DebugInfo'
 import RoleChangeHandler from './components/RoleChangeHandler'
-import RoleTestComponent from './components/RoleTestComponent'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -105,8 +103,6 @@ function App() {
             {/* <Route path="register" element={<Register />} /> */}
           </Routes>
           <RoleChangeHandler />
-          <RoleTestComponent />
-          <DebugInfo />
         </BrowserRouter>
       </ToastProvider>
     </AuthProvider>

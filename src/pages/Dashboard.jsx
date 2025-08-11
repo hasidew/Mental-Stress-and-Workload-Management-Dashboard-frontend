@@ -6,7 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { getDashboardUrl, shouldRedirectToAdmin } from '../utils/roleUtils';
 
 const Dashboard = () => {
-  const { getUserRole, setUserRole, user, refreshUserData } = useAuth();
+  const { getUserRole, user, refreshUserData } = useAuth();
   const { showError, showSuccess } = useToast();
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
@@ -222,58 +222,6 @@ const Dashboard = () => {
             Welcome back, {user?.username || getUserRole()}!
           </h1>
           <p className="text-[#4F4F4F]">Here's your mental wellness overview for today</p>
-          
-          {/* Debug Role Info */}
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800 mb-2">
-              <strong>Debug Info:</strong> Current Role: {getUserRole()} | Username: {user?.username || 'N/A'}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setUserRole('employee')}
-                className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Set Employee
-              </button>
-              <button
-                onClick={() => setUserRole('supervisor')}
-                className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                Set Supervisor
-              </button>
-              <button
-                onClick={() => setUserRole('psychiatrist')}
-                className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700"
-              >
-                Set Psychiatrist
-              </button>
-                          <button
-              onClick={() => setUserRole('hr_manager')}
-              className="px-3 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
-            >
-              Set HR Manager
-            </button>
-            <button
-              onClick={() => setUserRole('admin')}
-              className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Set Admin
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  await refreshUserData();
-                  showSuccess('User data refreshed!');
-                } catch (error) {
-                  showError('Failed to refresh user data');
-                }
-              }}
-              className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
-            >
-              Refresh Data
-            </button>
-            </div>
-          </div>
         </div>
 
         {/* Quick Stats */}

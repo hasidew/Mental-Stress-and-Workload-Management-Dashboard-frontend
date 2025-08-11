@@ -29,6 +29,7 @@ const HrDashboard = () => {
     duration_minutes: 30,
     notes: ''
   });
+  const [bookingForEmployee, setBookingForEmployee] = useState(false);
   const [availableTimes, setAvailableTimes] = useState([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
   
@@ -57,6 +58,9 @@ const HrDashboard = () => {
         apiService.getHrDashboard(),
         apiService.getAllPsychiatrists()
       ]);
+      console.log('HR Dashboard Data:', data);
+      console.log('Available Psychiatrists:', data.available_psychiatrists);
+      console.log('Consultants Data:', consultantsData);
       setDashboardData(data);
       setConsultants(consultantsData);
     } catch (error) {
@@ -88,10 +92,10 @@ const HrDashboard = () => {
 
       if (selectedEmployee) {
         await apiService.bookPsychiatristForEmployee(bookingData, selectedEmployee.id);
-        showSuccess('Psychiatrist booked for employee successfully');
+        showSuccess(`Psychiatrist session booked for ${selectedEmployee.name} successfully`);
       } else {
         await apiService.bookPsychiatrist(bookingData);
-        showSuccess('Psychiatrist booked successfully');
+        showSuccess('Psychiatrist session booked for yourself successfully');
       }
 
       setShowBookingModal(false);
@@ -104,6 +108,7 @@ const HrDashboard = () => {
         notes: ''
       });
       setSelectedEmployee(null);
+      setBookingForEmployee(false);
       fetchDashboardData();
       
       // Refresh the timetable if a psychiatrist and date are selected
@@ -612,22 +617,29 @@ const HrDashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {dashboardData.available_consultants.map((consultant) => (
-                    <div key={consultant.id} className="bg-white border rounded-lg p-6">
-                      <h4 className="font-semibold text-gray-900 mb-2">{consultant.name}</h4>
-                      <p className="text-sm text-gray-600 mb-2">{consultant.specialization}</p>
-                      <p className="text-sm text-gray-600 mb-4">{consultant.hospital}</p>
-                      <button
-                        onClick={() => {
-                          setBookingForm({ ...bookingForm, consultant_id: consultant.id });
-                          setShowBookingModal(true);
-                        }}
-                        className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Book Session
-                      </button>
+                  {dashboardData.available_psychiatrists && dashboardData.available_psychiatrists.length > 0 ? (
+                    dashboardData.available_psychiatrists.map((consultant) => (
+                      <div key={consultant.id} className="bg-white border rounded-lg p-6">
+                        <h4 className="font-semibold text-gray-900 mb-2">{consultant.name}</h4>
+                        <p className="text-sm text-gray-600 mb-2">{consultant.specialization}</p>
+                        <p className="text-sm text-gray-600 mb-4">{consultant.hospital}</p>
+                        <button
+                          onClick={() => {
+                            setBookingForm({ ...bookingForm, consultant_id: consultant.id });
+                            setShowBookingModal(true);
+                          }}
+                          className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Book Session
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-8">
+                      <p className="text-gray-600 mb-4">No psychiatrists available at the moment.</p>
+                      <p className="text-sm text-gray-500">Please check back later or contact the administrator.</p>
                     </div>
-                  ))}
+                  )}
                 </div>
 
                 {/* My Bookings */}
@@ -756,13 +768,53 @@ const HrDashboard = () => {
           <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                {selectedEmployee ? `Book Consultant for ${selectedEmployee.name}` : 'Book Consultant Session'}
+                {selectedEmployee ? `Book Psychiatrist Session for ${selectedEmployee.name}` : 'Book Psychiatrist Session'}
               </h3>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Booking Form */}
                 <div className="space-y-4">
                   <form onSubmit={handleBookConsultant} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Book For</label>
+                      <select
+                        value={selectedEmployee ? selectedEmployee.id : ''}
+                        onChange={(e) => {
+                          const employeeId = e.target.value;
+                          if (employeeId) {
+                            const employee = [...dashboardData.employees, ...dashboardData.supervisors].find(emp => emp.id === parseInt(employeeId));
+                            setSelectedEmployee(employee);
+                            setBookingForEmployee(true);
+                          } else {
+                            setSelectedEmployee(null);
+                            setBookingForEmployee(false);
+                          }
+                        }}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Book for myself</option>
+                        <optgroup label="Employees">
+                          {dashboardData.employees.map((employee) => (
+                            <option key={employee.id} value={employee.id}>
+                              {employee.name} ({employee.department || 'No Department'})
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Supervisors">
+                          {dashboardData.supervisors.map((supervisor) => (
+                            <option key={supervisor.id} value={supervisor.id}>
+                              {supervisor.name} ({supervisor.department || 'No Department'})
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {selectedEmployee 
+                          ? `Booking session for ${selectedEmployee.name} (${selectedEmployee.department || 'No Department'})`
+                          : 'Select who to book the session for (leave empty to book for yourself). Psychiatrists are excluded from this list.'
+                        }
+                      </p>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Psychiatrist</label>
                       <select
@@ -870,6 +922,7 @@ const HrDashboard = () => {
                         onClick={() => {
                           setShowBookingModal(false);
                           setSelectedEmployee(null);
+                          setBookingForEmployee(false);
                           setAvailableTimes([]);
                           setPsychiatristTimetable(null);
                           setBookingForm({

@@ -16,7 +16,7 @@ const PsychiatristDashboard = () => {
     status: 'approved',
     rejection_reason: ''
   });
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     fetchDashboardData();
@@ -136,22 +136,22 @@ const PsychiatristDashboard = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Psychiatrist Dashboard</h1>
-          <p className="text-gray-600">Manage your sessions and booking requests</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Dashboard</h1>
+          <p className="text-gray-600">Welcome back, {dashboardData?.name || user?.username}</p>
         </div>
 
         {/* Tab Navigation */}
         <div className="mb-6">
           <nav className="flex space-x-8">
             <button
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => setActiveTab('overview')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'dashboard'
+                activeTab === 'overview'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Dashboard
+              Overview
             </button>
             <button
               onClick={() => setActiveTab('pending')}
@@ -162,6 +162,11 @@ const PsychiatristDashboard = () => {
               }`}
             >
               Pending Requests
+              {pendingRequests.total_pending > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                  {pendingRequests.total_pending}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('sessions')}
@@ -171,33 +176,108 @@ const PsychiatristDashboard = () => {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              My Sessions
+              All Sessions
             </button>
           </nav>
         </div>
 
-        {/* Dashboard Tab */}
-        {activeTab === 'dashboard' && dashboardData && (
+        {/* Overview Tab */}
+        {activeTab === 'overview' && dashboardData && (
           <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-2xl font-bold text-blue-600">{dashboardData.stats.pending_requests}</div>
-                <div className="text-sm text-blue-600">Pending Requests</div>
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-red-100 text-red-600">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Pending Requests</p>
+                    <p className="text-2xl font-semibold text-gray-900">{dashboardData.stats.pending_requests}</p>
+                  </div>
+                </div>
+                {dashboardData.stats.pending_requests > 0 && (
+                  <div className="mt-3">
+                    <button
+                      onClick={() => setActiveTab('pending')}
+                      className="text-sm text-red-600 hover:text-red-800 font-medium"
+                    >
+                      Review requests →
+                    </button>
+                  </div>
+                )}
               </div>
+              
               <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-2xl font-bold text-green-600">{dashboardData.stats.upcoming_sessions}</div>
-                <div className="text-sm text-green-600">Upcoming Sessions</div>
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-green-100 text-green-600">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Upcoming Sessions</p>
+                    <p className="text-2xl font-semibold text-gray-900">{dashboardData.stats.upcoming_sessions}</p>
+                  </div>
+                </div>
               </div>
+              
               <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-2xl font-bold text-purple-600">{dashboardData.stats.today_sessions}</div>
-                <div className="text-sm text-purple-600">Today's Sessions</div>
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Today's Sessions</p>
+                    <p className="text-2xl font-semibold text-gray-900">{dashboardData.stats.today_sessions}</p>
+                  </div>
+                </div>
               </div>
+              
               <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-2xl font-bold text-gray-600">{dashboardData.stats.total_bookings}</div>
-                <div className="text-sm text-gray-600">Total Bookings</div>
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                    <p className="text-2xl font-semibold text-gray-900">{dashboardData.stats.total_bookings}</p>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Pending Requests Alert */}
+            {dashboardData.stats.pending_requests > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">
+                      You have {dashboardData.stats.pending_requests} pending request{dashboardData.stats.pending_requests > 1 ? 's' : ''} that need your attention
+                    </h3>
+                    <div className="mt-2">
+                      <button
+                        onClick={() => setActiveTab('pending')}
+                        className="text-sm text-red-800 hover:text-red-900 font-medium"
+                      >
+                        Review requests →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Today's Sessions */}
             {dashboardData.today_sessions.length > 0 && (
@@ -233,7 +313,7 @@ const PsychiatristDashboard = () => {
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-xl font-semibold mb-4">Upcoming Sessions</h2>
                 <div className="space-y-4">
-                  {dashboardData.upcoming_sessions.map((session) => (
+                  {dashboardData.upcoming_sessions.slice(0, 5).map((session) => (
                     <div key={session.id} className="border border-gray-200 rounded-lg p-4">
                       <div>
                         <h3 className="font-semibold">{session.employee_name}</h3>
@@ -245,6 +325,29 @@ const PsychiatristDashboard = () => {
                       </div>
                     </div>
                   ))}
+                  {dashboardData.upcoming_sessions.length > 5 && (
+                    <div className="text-center pt-4">
+                      <button
+                        onClick={() => setActiveTab('sessions')}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        View all sessions →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* No sessions message */}
+            {dashboardData.today_sessions.length === 0 && dashboardData.upcoming_sessions.length === 0 && (
+              <div className="bg-white rounded-lg shadow p-6 text-center">
+                <div className="text-gray-500">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No sessions scheduled</h3>
+                  <p className="mt-1 text-sm text-gray-500">You don't have any sessions scheduled for today or upcoming days.</p>
                 </div>
               </div>
             )}
@@ -256,7 +359,15 @@ const PsychiatristDashboard = () => {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-4">Pending Requests ({pendingRequests.total_pending})</h2>
             {pendingRequests.time_slots?.length === 0 ? (
-              <p className="text-gray-500">No pending requests</p>
+              <div className="text-center py-8">
+                <div className="text-gray-500">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No pending requests</h3>
+                  <p className="mt-1 text-sm text-gray-500">All requests have been processed.</p>
+                </div>
+              </div>
             ) : (
               <div className="space-y-6">
                 {pendingRequests.time_slots?.map((timeSlot) => (
@@ -309,7 +420,15 @@ const PsychiatristDashboard = () => {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-4">All My Sessions</h2>
             {mySessions.length === 0 ? (
-              <p className="text-gray-500">No sessions found</p>
+              <div className="text-center py-8">
+                <div className="text-gray-500">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No sessions found</h3>
+                  <p className="mt-1 text-sm text-gray-500">You don't have any sessions in your history.</p>
+                </div>
+              </div>
             ) : (
               <div className="space-y-4">
                 {mySessions.map((session) => (

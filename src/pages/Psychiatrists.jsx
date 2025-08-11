@@ -17,11 +17,18 @@ const Psychiatrists = () => {
     notes: '',
     selectedSlot: null
   });
+  const [employees, setEmployees] = useState([]);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [bookingForEmployee, setBookingForEmployee] = useState(false);
 
   useEffect(() => {
     fetchPsychiatrists();
     fetchMyBookings();
-  }, []);
+    // Fetch employees if user is HR manager
+    if (user?.role === 'hr_manager') {
+      fetchEmployees();
+    }
+  }, [user]);
 
   const fetchPsychiatrists = async () => {
     try {
@@ -33,6 +40,16 @@ const Psychiatrists = () => {
       showError('Failed to load psychiatrists');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await api.getHrDashboard();
+      const allEmployees = [...(response.employees || []), ...(response.supervisors || [])];
+      setEmployees(allEmployees);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
     }
   };
 
@@ -93,15 +110,24 @@ const Psychiatrists = () => {
       // Create the local datetime string and send it directly
       const localDateTime = `${selectedDate}T${bookingData.selectedSlot.start_time}:00`;
       
-      const response = await api.bookPsychiatrist({
+      const bookingPayload = {
         psychiatrist_id: selectedPsychiatrist.id,
         booking_date: localDateTime,
         notes: bookingData.notes
-      });
+      };
 
-      showSuccess(response.message);
+      if (selectedEmployee && bookingForEmployee) {
+        await api.bookPsychiatristForEmployee(bookingPayload, selectedEmployee.id);
+        showSuccess(`Psychiatrist session booked for ${selectedEmployee.name} successfully`);
+      } else {
+        await api.bookPsychiatrist(bookingPayload);
+        showSuccess('Psychiatrist session booked for yourself successfully');
+      }
+
       setShowBookingModal(false);
       setBookingData({ notes: '', selectedSlot: null });
+      setSelectedEmployee(null);
+      setBookingForEmployee(false);
       
       // Refresh data
       fetchMyBookings();
@@ -156,7 +182,12 @@ const Psychiatrists = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Book Psychiatrist Session</h1>
-          <p className="text-gray-600">Select a psychiatrist and book a 30-minute session</p>
+          <p className="text-gray-600">
+            {user?.role === 'hr_manager' 
+              ? 'Select a psychiatrist and book a 30-minute session for yourself or an employee'
+              : 'Select a psychiatrist and book a 30-minute session'
+            }
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -312,7 +343,9 @@ const Psychiatrists = () => {
       {showBookingModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">Book Session</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              {selectedEmployee ? `Book Session for ${selectedEmployee.name}` : 'Book Session'}
+            </h3>
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-2">
                 <strong>Psychiatrist:</strong> {selectedPsychiatrist?.name}
@@ -324,6 +357,44 @@ const Psychiatrists = () => {
                 <strong>Time:</strong> {bookingData.selectedSlot?.start_time} - {bookingData.selectedSlot?.end_time}
               </p>
             </div>
+
+            {/* Employee Selection for HR Managers */}
+            {user?.role === 'hr_manager' && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Book for Employee (Optional)
+                </label>
+                <select
+                  value={selectedEmployee?.id || ''}
+                  onChange={(e) => {
+                    const employeeId = e.target.value;
+                    if (employeeId) {
+                      const employee = employees.find(emp => emp.id === parseInt(employeeId));
+                      setSelectedEmployee(employee);
+                      setBookingForEmployee(true);
+                    } else {
+                      setSelectedEmployee(null);
+                      setBookingForEmployee(false);
+                    }
+                  }}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Book for myself</option>
+                  {employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name} ({employee.department || 'No Department'})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {selectedEmployee 
+                    ? `Booking session for ${selectedEmployee.name} (${selectedEmployee.department || 'No Department'})`
+                    : 'Select who to book the session for (leave empty to book for yourself). Psychiatrists are excluded from this list.'
+                  }
+                </p>
+              </div>
+            )}
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Notes (optional)
@@ -338,7 +409,11 @@ const Psychiatrists = () => {
             </div>
             <div className="flex space-x-3">
               <button
-                onClick={() => setShowBookingModal(false)}
+                onClick={() => {
+                  setShowBookingModal(false);
+                  setSelectedEmployee(null);
+                  setBookingForEmployee(false);
+                }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
                 Cancel
