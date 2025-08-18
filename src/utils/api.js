@@ -723,6 +723,31 @@ class ApiService {
     });
   }
 
+  // Chatbot methods
+  async sendChatMessage(message, sessionId = null) {
+    return await this.request('/chatbot/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        message,
+        session_id: sessionId
+      }),
+    });
+  }
+
+  async getChatSessions() {
+    return await this.request('/chatbot/sessions');
+  }
+
+  async getChatMessages(sessionId) {
+    return await this.request(`/chatbot/sessions/${sessionId}/messages`);
+  }
+
+  async deleteChatSession(sessionId) {
+    return await this.request(`/chatbot/sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // User data refresh with role change detection
   async refreshUserData() {
     try {
