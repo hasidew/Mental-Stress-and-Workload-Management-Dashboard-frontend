@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is authenticated on app load
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const token = localStorage.getItem('access_token');
       console.log('Initial auth check - token exists:', !!token);
       
@@ -31,10 +31,22 @@ export const AuthProvider = ({ children }) => {
         console.log('Initial auth check - stored role (not used):', localStorage.getItem('user_role'));
         
         if (userInfo) {
+          // Fetch user display name
+          let displayName = null;
+          try {
+            const displayNameResponse = await apiService.getUserDisplayName();
+            displayName = displayNameResponse.displayName;
+            console.log('Initial auth check - fetched display name:', displayName);
+          } catch (displayNameError) {
+            console.log('Initial auth check - could not fetch display name:', displayNameError.message);
+            // Continue without display name - it's optional for display purposes
+          }
+          
           const userState = { 
             token, 
             ...userInfo,
-            role: userInfo.role || 'employee'  // Only use JWT token, never localStorage
+            role: userInfo.role || 'employee',  // Only use JWT token, never localStorage
+            displayName: displayName
           };
           console.log('Initial auth check - setting user state:', userState);
           setUser(userState);
@@ -74,11 +86,23 @@ export const AuthProvider = ({ children }) => {
       console.log('Using role directly from login response:', finalRole);
       console.log('Using username directly from login response:', finalUsername);
       
+      // Fetch user display name
+      let displayName = null;
+      try {
+        const displayNameResponse = await apiService.getUserDisplayName();
+        displayName = displayNameResponse.displayName;
+        console.log('Fetched display name:', displayName);
+      } catch (displayNameError) {
+        console.log('Could not fetch display name:', displayNameError.message);
+        // Continue without display name - it's optional for display purposes
+      }
+      
       // Set user state
       const userState = {
         token: response.access_token,
         role: finalRole,
-        username: finalUsername
+        username: finalUsername,
+        displayName: displayName
       };
       
       console.log('Setting user state:', userState);

@@ -832,6 +832,11 @@ class ApiService {
     });
   }
 
+  // Get user display name
+  async getUserDisplayName() {
+    return await this.request('/auth/user/name');
+  }
+
   // Logout
   logout() {
     this.setToken(null);

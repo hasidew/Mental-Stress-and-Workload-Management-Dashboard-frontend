@@ -222,7 +222,7 @@ const Dashboard = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-[#212121] mb-2">
-            Welcome back, {user?.username || getUserRole()}!
+            Welcome back, {user?.displayName || user?.username || getUserRole()}!
           </h1>
           <p className="text-[#4F4F4F]">Here's your mental wellness overview for today</p>
         </div>
