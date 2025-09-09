@@ -1724,7 +1724,7 @@ const CreateDepartmentModal = ({ onClose, onSubmit }) => {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Department Name *</label>
+            <label className="block text-[#212121] font-medium mb-2">Department Name <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="name"
@@ -1892,7 +1892,7 @@ const CreateTeamModal = ({ onClose, onSubmit, departments, users }) => {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Team Name *</label>
+          <label className="block text-[#212121] font-medium mb-2">Team Name <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="name"
@@ -1911,7 +1911,7 @@ const CreateTeamModal = ({ onClose, onSubmit, departments, users }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Department *</label>
+            <label className="block text-[#212121] font-medium mb-2">Department <span className="text-red-500">*</span></label>
             <select
               name="department_id"
               value={formData.department_id}
@@ -2082,7 +2082,7 @@ const EditDepartmentModal = ({ onClose, onSubmit, department }) => {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Department Name *</label>
+            <label className="block text-[#212121] font-medium mb-2">Department Name <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="name"
@@ -2270,7 +2270,7 @@ const EditTeamModal = ({ onClose, onSubmit, team, departments, users }) => {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Team Name *</label>
+            <label className="block text-[#212121] font-medium mb-2">Team Name <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="name"
@@ -2289,7 +2289,7 @@ const EditTeamModal = ({ onClose, onSubmit, team, departments, users }) => {
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Department *</label>
+            <label className="block text-[#212121] font-medium mb-2">Department <span className="text-red-500">*</span></label>
             <select
               name="department_id"
               value={formData.department_id}
@@ -2480,7 +2480,7 @@ const EditUserModal = ({ onClose, onSubmit, user, departments, teams, users }) =
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Name *</label>
+            <label className="block text-[#212121] font-medium mb-2">Name <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="name"
@@ -2499,7 +2499,7 @@ const EditUserModal = ({ onClose, onSubmit, user, departments, teams, users }) =
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Email *</label>
+            <label className="block text-[#212121] font-medium mb-2">Email <span className="text-red-500">*</span></label>
             <input
               type="email"
               name="email"
@@ -2518,7 +2518,7 @@ const EditUserModal = ({ onClose, onSubmit, user, departments, teams, users }) =
             )}
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Department *</label>
+            <label className="block text-[#212121] font-medium mb-2">Department <span className="text-red-500">*</span></label>
             <select
               name="department_id"
               value={formData.department_id}
@@ -2869,7 +2869,7 @@ const CreateConsultantWithAvailabilityModal = ({ onClose, onSubmit }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[#212121] font-medium mb-2">Name *</label>
+              <label className="block text-[#212121] font-medium mb-2">Name <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="name"
@@ -2888,7 +2888,7 @@ const CreateConsultantWithAvailabilityModal = ({ onClose, onSubmit }) => {
               )}
             </div>
             <div>
-              <label className="block text-[#212121] font-medium mb-2">Registration Number *</label>
+              <label className="block text-[#212121] font-medium mb-2">Registration Number <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="registration_number"
@@ -2909,7 +2909,7 @@ const CreateConsultantWithAvailabilityModal = ({ onClose, onSubmit }) => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[#212121] font-medium mb-2">Hospital *</label>
+              <label className="block text-[#212121] font-medium mb-2">Hospital <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="hospital"
@@ -2928,7 +2928,7 @@ const CreateConsultantWithAvailabilityModal = ({ onClose, onSubmit }) => {
               )}
             </div>
             <div>
-              <label className="block text-[#212121] font-medium mb-2">Specialization *</label>
+              <label className="block text-[#212121] font-medium mb-2">Specialization <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="specialization"
@@ -2948,7 +2948,7 @@ const CreateConsultantWithAvailabilityModal = ({ onClose, onSubmit }) => {
             </div>
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Qualifications *</label>
+            <label className="block text-[#212121] font-medium mb-2">Qualifications <span className="text-red-500">*</span></label>
             <textarea
               name="qualifications"
               value={formData.qualifications}
@@ -2969,7 +2969,7 @@ const CreateConsultantWithAvailabilityModal = ({ onClose, onSubmit }) => {
 
           <div>
             <div className="flex justify-between items-center mb-4">
-              <label className="block text-[#212121] font-medium">Availability Schedule *</label>
+              <label className="block text-[#212121] font-medium">Availability Schedule <span className="text-red-500">*</span></label>
               <button
                 type="button"
                 onClick={addAvailability}
@@ -3185,7 +3185,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[#212121] font-medium mb-2">Name *</label>
+              <label className="block text-[#212121] font-medium mb-2">Name <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="name"
@@ -3204,7 +3204,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
               )}
             </div>
             <div>
-              <label className="block text-[#212121] font-medium mb-2">Registration Number *</label>
+              <label className="block text-[#212121] font-medium mb-2">Registration Number <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="registration_number"
@@ -3225,7 +3225,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[#212121] font-medium mb-2">Hospital *</label>
+              <label className="block text-[#212121] font-medium mb-2">Hospital <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="hospital"
@@ -3244,7 +3244,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
               )}
             </div>
             <div>
-              <label className="block text-[#212121] font-medium mb-2">Specialization *</label>
+              <label className="block text-[#212121] font-medium mb-2">Specialization <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="specialization"
@@ -3264,7 +3264,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
             </div>
           </div>
           <div>
-            <label className="block text-[#212121] font-medium mb-2">Qualifications *</label>
+            <label className="block text-[#212121] font-medium mb-2">Qualifications <span className="text-red-500">*</span></label>
             <textarea
               name="qualifications"
               value={formData.qualifications}
@@ -3285,7 +3285,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
 
           <div>
             <div className="flex justify-between items-center mb-4">
-              <label className="block text-[#212121] font-medium">Availability Schedule *</label>
+              <label className="block text-[#212121] font-medium">Availability Schedule <span className="text-red-500">*</span></label>
               <button
                 type="button"
                 onClick={addAvailability}
@@ -3496,7 +3496,7 @@ const ReviewRequestModal = ({ onClose, request }) => {
         {request.status === 'pending' && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-[#212121] font-medium mb-2">Action *</label>
+              <label className="block text-[#212121] font-medium mb-2">Action <span className="text-red-500">*</span></label>
               <div className="flex space-x-4">
                 <label className="flex items-center">
                   <input
@@ -3525,7 +3525,7 @@ const ReviewRequestModal = ({ onClose, request }) => {
             
             {action === 'reject' && (
               <div>
-                <label className="block text-[#212121] font-medium mb-2">Rejection Reason *</label>
+                <label className="block text-[#212121] font-medium mb-2">Rejection Reason <span className="text-red-500">*</span></label>
                 <textarea
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
