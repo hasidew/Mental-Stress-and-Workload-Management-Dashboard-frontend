@@ -14,6 +14,8 @@ const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(true);
+  const [departmentsError, setDepartmentsError] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -24,6 +26,7 @@ const SignUp = () => {
     jobRole: "",
     employeeId: "",
     department: "",
+    team: "",
     registrationNumber: "",
     hospital: "",
     username: "",
@@ -35,15 +38,25 @@ const SignUp = () => {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
+        setDepartmentsLoading(true);
+        setDepartmentsError(false);
         const apiService = (await import('../utils/api')).default;
         console.log('Fetching departments...');
         const departmentsData = await apiService.getAllDepartments();
         console.log('Departments fetched:', departmentsData);
-        setDepartments(departmentsData);
+        
+        if (departmentsData && departmentsData.length > 0) {
+          setDepartments(departmentsData);
+        } else {
+          setDepartmentsError(true);
+          showWarning('No departments are currently available in the system. User registration is temporarily disabled.');
+        }
       } catch (error) {
         console.error('Failed to fetch departments:', error);
-        // Don't show error to user, just log it and continue with empty departments
-        // This allows the form to work even if departments can't be loaded
+        setDepartmentsError(true);
+        showError('Failed to load departments. User registration is temporarily disabled.');
+      } finally {
+        setDepartmentsLoading(false);
       }
     };
 
@@ -62,6 +75,23 @@ const SignUp = () => {
       console.error('Error fetching teams:', error);
       setTeams([]);
     }
+  };
+
+  // Check if signup should be disabled
+  const isSignupDisabled = () => {
+    return departmentsLoading || departmentsError || departments.length === 0;
+  };
+
+  // Check if form submission should be disabled
+  const isFormSubmissionDisabled = () => {
+    if (isSignupDisabled()) return true;
+    
+    // Check if teams are available for Employee and Supervisor roles
+    if ((role === "Employee" || role === "Supervisor") && form.department && teams.length === 0) {
+      return true;
+    }
+    
+    return false;
   };
 
   // Dynamic validation schema based on selected role
@@ -95,7 +125,6 @@ const SignUp = () => {
     if (role === "Employee" || role === "Supervisor") {
       baseSchema.team = [(value) => validationRules.required(value, 'Team')];
     }
-
 
     return baseSchema;
   };
@@ -135,6 +164,18 @@ const SignUp = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent submission if signup is disabled
+    if (isSignupDisabled()) {
+      showError('User registration is currently disabled due to system configuration issues. Please contact the administrator.');
+      return;
+    }
+    
+    // Additional check for teams availability for Employee and Supervisor roles
+    if ((role === "Employee" || role === "Supervisor") && form.department && teams.length === 0) {
+      showError('No teams are available for the selected department. Please contact your administrator to set up teams before proceeding with registration.');
+      return;
+    }
     
     // Mark all fields as touched
     const allFields = Object.keys(form);
@@ -214,6 +255,149 @@ const SignUp = () => {
     }
   };
 
+  // Show loading state
+  if (departmentsLoading) {
+    return (
+      <div className="bg-[#EDF4FA] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-[#4F4F4F]">Loading registration form...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state when departments are not available
+  if (departmentsError || departments.length === 0) {
+    return (
+      <div className="bg-[#EDF4FA] min-h-screen py-10 px-4">
+        <div className="max-w-4xl mx-auto mt-8">
+          <div className="bg-white rounded-2xl p-8 shadow-md">
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <img src="/images/logo.png" alt="MindCare Logo" className="w-16 h-16 object-contain" />
+            </div>
+            
+            {/* Error Message */}
+            <div className="mb-8 text-center">
+              <div className="text-red-500 text-6xl mb-4">⚠️</div>
+              <h2 className="text-3xl font-bold text-[#212121] mb-4">Registration Temporarily Unavailable</h2>
+              <p className="text-[#4F4F4F] text-lg mb-6">
+                User registration is currently disabled due to system configuration issues.
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <h3 className="text-lg font-semibold text-red-800 mb-2">What happened?</h3>
+                <p className="text-red-700">
+                  The system could not load the required department and team information needed for user registration.
+                </p>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h3 className="text-lg font-semibold text-blue-800 mb-2">What you can do:</h3>
+                <ul className="text-blue-700 text-left max-w-md mx-auto space-y-2">
+                  <li>• Contact your system administrator</li>
+                  <li>• Check back later when the system is configured</li>
+                  <li>• Use the contact form to request assistance</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Data Collection Form */}
+            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 mb-6">
+              <h3 className="text-xl font-semibold text-[#212121] mb-4 flex items-center">
+                <span className="mr-2">📝</span>
+                Express Interest in Registration
+              </h3>
+              <p className="text-[#4F4F4F] mb-4">
+                While registration is currently unavailable, you can provide your information below. 
+                We'll notify you when the system is ready and you can complete your registration.
+              </p>
+              
+              <form className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[#212121] font-medium mb-2">First Name <span className="text-red-500">*</span></label>
+                    <input 
+                      type="text" 
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent focus:ring-blue-500 transition-all duration-200"
+                      placeholder="Enter your first name"
+                      disabled
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#212121] font-medium mb-2">Last Name <span className="text-red-500">*</span></label>
+                    <input 
+                      type="text" 
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent focus:ring-blue-500 transition-all duration-200"
+                      placeholder="Enter your last name"
+                      disabled
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#212121] font-medium mb-2">Email Address <span className="text-red-500">*</span></label>
+                    <input 
+                      type="email" 
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent focus:ring-blue-500 transition-all duration-200"
+                      placeholder="Enter your email address"
+                      disabled
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#212121] font-medium mb-2">Preferred Job Role</label>
+                    <select 
+                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent focus:ring-blue-500 transition-all duration-200"
+                      disabled
+                    >
+                      <option value="">Select your preferred job role</option>
+                      <option value="Employee">Employee</option>
+                      <option value="Supervisor">Supervisor</option>
+                      <option value="HR Manager">HR Manager</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="text-center">
+                  <button 
+                    type="button" 
+                    className="bg-gray-400 text-gray-600 py-3 px-6 rounded-xl font-semibold cursor-not-allowed"
+                    disabled
+                  >
+                    Form Disabled - Contact Administrator
+                  </button>
+                </div>
+                
+                <div className="text-center text-sm text-gray-500">
+                  <p>This form is currently disabled. Please contact your system administrator to:</p>
+                  <ul className="mt-2 space-y-1">
+                    <li>• Set up departments and teams in the system</li>
+                    <li>• Enable user registration</li>
+                    <li>• Get assistance with the registration process</li>
+                  </ul>
+                </div>
+              </form>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="text-center space-y-4">
+              <Link 
+                to="/" 
+                className="inline-block bg-blue-600 text-white py-3 px-6 rounded-xl hover:bg-blue-700 transition-colors font-semibold"
+              >
+                Back to Home
+              </Link>
+              <br />
+              <Link 
+                to="/signin" 
+                className="inline-block bg-gray-600 text-white py-3 px-6 rounded-xl hover:bg-gray-700 transition-colors font-semibold"
+              >
+                Go to Sign In
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[#EDF4FA] min-h-screen py-10 px-4">
       <div className="max-w-4xl mx-auto mt-8">
@@ -229,6 +413,25 @@ const SignUp = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* System Status Warning */}
+            {departments.length > 0 && teams.length === 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-yellow-800">Limited System Functionality</h3>
+                    <div className="mt-2 text-sm text-yellow-700">
+                      <p>While departments are available, some teams may not be configured yet. This may affect registration for certain roles.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Personal Information */}
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
               <h3 className="text-xl font-semibold text-[#212121] mb-4 flex items-center">
@@ -435,49 +638,27 @@ const SignUp = () => {
               {(role === "Employee" || role === "Supervisor") && (
                 <div>
                   <label className="block text-[#212121] font-medium mb-2">Department <span className="text-red-500">*</span></label>
-                  {departments.length > 0 ? (
-                    <select 
-                      name="department" 
-                      required 
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                        touched.department && errors.department 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-200 focus:ring-blue-500'
-                      }`}
-                      value={form.department}
-                    >
-                      <option value="">Select your department</option>
-                      {departments.map((dept) => (
-                        <option key={dept.id} value={dept.name}>
-                          {dept.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input 
-                      type="text" 
-                      name="department" 
-                      required 
-                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                        touched.department && errors.department 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-200 focus:ring-blue-500'
-                      }`}
-                      placeholder="Enter your department"
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      value={form.department}
-                    />
-                  )}
+                  <select 
+                    name="department" 
+                    required 
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                      touched.department && errors.department 
+                        ? 'border-red-500 focus:ring-red-500' 
+                        : 'border-gray-200 focus:ring-blue-500'
+                    }`}
+                    value={form.department}
+                  >
+                    <option value="">Select your department</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
                   {touched.department && errors.department && (
                     <p className="text-red-500 text-sm mt-1">{errors.department}</p>
-                  )}
-                  {departments.length === 0 && (
-                    <p className="text-yellow-600 text-sm mt-1">
-                      ⚠️ No departments loaded. You can enter your department name manually.
-                    </p>
                   )}
                 </div>
               )}
@@ -486,44 +667,26 @@ const SignUp = () => {
               {(role === "Employee" || role === "Supervisor") && (
                 <div>
                   <label className="block text-[#212121] font-medium mb-2">Team <span className="text-red-500">*</span></label>
-                  {teams.length > 0 ? (
-                    <select 
-                      name="team" 
-                      required 
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                        touched.team && errors.team 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-200 focus:ring-blue-500'
-                      }`}
-                      value={form.team || ''}
-                      disabled={!form.department}
-                    >
-                      <option value="">{form.department ? "Select your team" : "Please select a department first"}</option>
-                      {teams.map((team) => (
-                        <option key={team.id} value={team.name}>
-                          {team.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input 
-                      type="text" 
-                      name="team" 
-                      required 
-                      className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                        touched.team && errors.team 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-200 focus:ring-blue-500'
-                      }`}
-                      placeholder="Enter your team"
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      value={form.team || ''}
-                      disabled={!form.department}
-                    />
-                  )}
+                  <select 
+                    name="team" 
+                    required 
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                      touched.team && errors.team 
+                        ? 'border-red-500 focus:ring-red-500' 
+                        : 'border-gray-200 focus:ring-blue-500'
+                    }`}
+                    value={form.team || ''}
+                    disabled={!form.department}
+                  >
+                    <option value="">{form.department ? "Select your team" : "Please select a department first"}</option>
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.name}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
                   {touched.team && errors.team && (
                     <p className="text-red-500 text-sm mt-1">{errors.team}</p>
                   )}
@@ -532,10 +695,26 @@ const SignUp = () => {
                       Please select a department first to see available teams.
                     </p>
                   )}
+                  {form.department && teams.length === 0 && (
+                    <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h4 className="text-sm font-medium text-red-800">No Teams Available</h4>
+                          <div className="mt-1 text-sm text-red-700">
+                            <p>No teams are currently set up for the <strong>{form.department}</strong> department.</p>
+                            <p className="mt-1">Registration cannot proceed until teams are configured. Please contact your system administrator.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-
-
             </div>
 
             {/* Login Information */}
@@ -624,9 +803,14 @@ const SignUp = () => {
             <div className="text-center">
               <button 
                 type="submit" 
-                className="bg-gradient-to-r from-[#212121] to-gray-800 text-white py-4 px-8 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105 font-semibold text-lg"
+                disabled={isFormSubmissionDisabled()}
+                className={`py-4 px-8 rounded-xl font-semibold text-lg transition-all duration-300 ${
+                  isFormSubmissionDisabled()
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-[#212121] to-gray-800 text-white hover:shadow-lg hover:scale-105'
+                }`}
               >
-                Create Account
+                {isFormSubmissionDisabled() ? 'Registration Unavailable' : 'Create Account'}
               </button>
             </div>
           </form>

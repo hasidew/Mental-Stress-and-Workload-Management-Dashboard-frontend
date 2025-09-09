@@ -92,11 +92,28 @@ const Psychiatrists = () => {
     }
   };
 
+  // Function to check if a time slot is in the past
+  const isSlotInPast = (slot, selectedDate) => {
+    if (selectedDate === new Date().toISOString().slice(0, 10)) {
+      const now = new Date();
+      const slotTime = new Date(`${selectedDate}T${slot.start_time}`);
+      return slotTime <= now;
+    }
+    return false;
+  };
+
   const handleSlotSelect = (slot) => {
     if (!slot.available) {
       showError('This slot is already booked');
       return;
     }
+    
+    // Check if slot is in the past
+    if (isSlotInPast(slot, selectedDate)) {
+      showError('Cannot book sessions in the past');
+      return;
+    }
+    
     setBookingData({
       notes: '',
       selectedSlot: slot
@@ -248,28 +265,50 @@ const Psychiatrists = () => {
                   <div>
                     {timetable.available ? (
                       <div className="grid grid-cols-4 gap-2">
-                        {timetable.slots.map((slot, index) => (
-                          <button
-                            key={index}
-                            onClick={() => handleSlotSelect(slot)}
-                            disabled={!slot.available}
-                            className={`p-3 rounded-lg text-center transition-all ${
-                              slot.available
-                                ? 'bg-blue-50 border border-blue-200 hover:bg-blue-100 cursor-pointer'
-                                : 'bg-gray-100 border border-gray-200 cursor-not-allowed'
-                            }`}
-                          >
-                            <div className="font-medium">
-                              {slot.start_time} - {slot.end_time}
-                            </div>
-                            {!slot.available && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                {slot.status === 'pending' ? 'Pending' : 'Booked'}
-                                {slot.employee_name && ` by ${slot.employee_name}`}
+                        {timetable.slots.map((slot, index) => {
+                          const isPast = isSlotInPast(slot, selectedDate);
+                          const isDisabled = !slot.available || isPast;
+                          
+                          return (
+                            <button
+                              key={index}
+                              onClick={() => handleSlotSelect(slot)}
+                              disabled={isDisabled}
+                              className={`p-3 rounded-lg text-center transition-all ${
+                                isDisabled
+                                  ? isPast
+                                    ? 'bg-red-50 border border-red-200 cursor-not-allowed text-red-400'
+                                    : 'bg-gray-100 border border-gray-200 cursor-not-allowed text-gray-400'
+                                  : 'bg-blue-50 border border-blue-200 hover:bg-blue-100 cursor-pointer'
+                              }`}
+                            >
+                              <div className="font-medium">
+                                {slot.start_time} - {slot.end_time}
                               </div>
-                            )}
-                          </button>
-                        ))}
+                              {isPast && (
+                                <div className="text-xs text-red-500 mt-1">
+                                  Past time
+                                </div>
+                              )}
+                              {!slot.available && !isPast && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {slot.status === 'pending' ? 'Pending' : 'Booked'}
+                                  {slot.employee_name && ` by ${slot.employee_name}`}
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                        
+                        {/* Information about past time slots */}
+                        {selectedDate === new Date().toISOString().slice(0, 10) && (
+                          <div className="mt-3 text-sm text-gray-600 text-center">
+                            <span className="inline-flex items-center">
+                              <span className="w-3 h-3 bg-red-200 border border-red-300 rounded-full mr-2"></span>
+                              Red slots are past times and cannot be booked
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center py-8 text-gray-500">

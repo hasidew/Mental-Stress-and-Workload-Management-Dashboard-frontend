@@ -66,43 +66,32 @@ const SignIn = () => {
       
       // Get user role and redirect to appropriate dashboard
       const userRole = getUserRole();
-      console.log('User role after login:', userRole);
-      console.log('Current user object:', user);
       
       let redirectPath = '/dashboard'; // default
-      
+      console.log("recieved user role is: ", userRole)
       switch (userRole) {
         case 'admin':
           redirectPath = '/admin-dashboard';
-          console.log('Admin detected, redirecting to admin dashboard');
           break;
         case 'hr_manager':
           redirectPath = '/hr-dashboard';
-          console.log('HR Manager detected, redirecting to HR dashboard');
           break;
         case 'supervisor':
-          console.log('Supervisor detected, redirecting to main dashboard');
           redirectPath = '/dashboard';
           break;
         case 'psychiatrist':
-          console.log('Psychiatrist detected, redirecting to main dashboard');
-          redirectPath = '/dashboard';
+          redirectPath = '/psychiatrist-dashboard';
           break;
         case 'employee':
-          console.log('Employee detected, redirecting to main dashboard');
           redirectPath = '/dashboard';
           break;
         default:
-          console.log('Unknown role detected:', userRole, 'redirecting to main dashboard');
           redirectPath = '/dashboard';
           break;
       }
       
-      console.log('Redirecting to:', redirectPath);
-      
       // Redirect to intended page or appropriate dashboard
-      const from = location.state?.from?.pathname || redirectPath;
-      navigate(from, { replace: true });
+      navigate(redirectPath, { replace: true });
     } catch (error) {
       console.error('Login error:', error);
       showError(typeof error.message === 'string' ? error.message : "Login failed. Please try again.");

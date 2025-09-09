@@ -36,8 +36,7 @@ const Navbar = () => {
     ];
 
     const psychiatristNavItems = [
-        { path: '/psychiatrist-dashboard', label: 'My Dashboard' },
-        { path: '/dashboard', label: 'General Dashboard' }
+        { path: '/psychiatrist-dashboard', label: 'Dashboard' }
     ];
 
     const hrNavItems = [

@@ -27,15 +27,14 @@ export const AuthProvider = ({ children }) => {
         const userInfo = extractUserInfo(token);
         console.log('Initial auth check - userInfo from token:', userInfo);
         
-        // Try to get role from localStorage as fallback
-        const storedRole = localStorage.getItem('user_role');
-        console.log('Initial auth check - stored role:', storedRole);
+        // Don't use localStorage as fallback - it could be stale data
+        console.log('Initial auth check - stored role (not used):', localStorage.getItem('user_role'));
         
         if (userInfo) {
           const userState = { 
             token, 
             ...userInfo,
-            role: userInfo.role || storedRole || 'employee'
+            role: userInfo.role || 'employee'  // Only use JWT token, never localStorage
           };
           console.log('Initial auth check - setting user state:', userState);
           setUser(userState);
@@ -65,40 +64,29 @@ export const AuthProvider = ({ children }) => {
       console.log('Login attempt for:', credentials.username);
       const response = await apiService.login(credentials);
       console.log('Login response received:', response);
+      console.log('Response keys:', Object.keys(response));
+      console.log('Response role:', response.role);
+      console.log('Response username:', response.username);
       
-      // Test JWT token decoding
-      testJwtDecoding(response.access_token);
-      
-      // Extract user info from JWT token
-      const userInfo = extractUserInfo(response.access_token);
-      console.log('Login - Extracted userInfo from JWT:', userInfo);
-      
-      // Try to get role from localStorage as fallback
-      const storedRole = localStorage.getItem('user_role');
-      console.log('Stored role from localStorage:', storedRole);
-      
-      // Determine the role to use
-      let finalRole = 'employee'; // default fallback
-      
-      if (userInfo && userInfo.role) {
-        finalRole = userInfo.role;
-        console.log('Using role from JWT token:', finalRole);
-      } else if (storedRole) {
-        finalRole = storedRole;
-        console.log('Using role from localStorage:', finalRole);
-      } else {
-        console.log('No role found, using default: employee');
-      }
+      // Use role and username directly from login response - much simpler and more reliable!
+      const finalRole = response.role || 'employee';
+      const finalUsername = response.username || credentials.username;
+      console.log('Using role directly from login response:', finalRole);
+      console.log('Using username directly from login response:', finalUsername);
       
       // Set user state
       const userState = {
         token: response.access_token,
         role: finalRole,
-        username: userInfo?.username || credentials.username
+        username: finalUsername
       };
       
       console.log('Setting user state:', userState);
       setUser(userState);
+      
+      // Verify the user state was set correctly
+      console.log('User state after setUser:', userState);
+      console.log('Current user object in state:', user);
       
       // Store role in localStorage for consistency
       localStorage.setItem('user_role', finalRole);
@@ -194,6 +182,15 @@ export const AuthProvider = ({ children }) => {
     apiService.logout();
     setUser(null);
     setError(null);
+    
+    // Clear all stored authentication data
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('last_role_refresh');
+    localStorage.removeItem('refresh_call_count');
+    
+    // Force clear any cached data
+    setLoading(false);
   };
 
   const isAuthenticated = () => {
@@ -201,7 +198,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const getUserRole = () => {
-    return user?.role || 'employee';
+    const role = user?.role || 'employee';
+    console.log('getUserRole called - user state:', user);
+    console.log('getUserRole returning:', role);
+    return role;
   };
 
   const hasRole = (role) => {
@@ -211,8 +211,11 @@ export const AuthProvider = ({ children }) => {
 
   const setUserRole = (role) => {
     if (user) {
+      console.log('setUserRole called with:', role);
+      console.log('Previous user state:', user);
       setUser({ ...user, role });
       localStorage.setItem('user_role', role);
+      console.log('New user state set with role:', role);
     }
   };
 
@@ -224,11 +227,12 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      // Extract current role from token
+      // Extract current role from token - ONLY from token, never from localStorage
       const currentUserInfo = extractUserInfo(token);
-      const currentRole = currentUserInfo?.role || localStorage.getItem('user_role') || 'employee';
+      const currentRole = currentUserInfo?.role || 'employee';
       
       console.log('Current role from token:', currentRole);
+      console.log('localStorage user_role (should not be used):', localStorage.getItem('user_role'));
 
       // Only proceed if forced or if we haven't refreshed recently
       const lastRefresh = localStorage.getItem('last_role_refresh');

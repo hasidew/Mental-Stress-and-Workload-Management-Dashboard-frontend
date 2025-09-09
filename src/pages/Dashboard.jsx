@@ -41,6 +41,9 @@ const Dashboard = () => {
           } else if (userRole === 'hr_manager') {
             shouldRedirect = true;
             redirectPath = '/hr-dashboard';
+          } else if (userRole === 'psychiatrist') {
+            shouldRedirect = true;
+            redirectPath = '/psychiatrist-dashboard';
           }
           
           // Only redirect if user is on the wrong dashboard

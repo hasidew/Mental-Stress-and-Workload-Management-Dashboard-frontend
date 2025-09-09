@@ -5,8 +5,9 @@ export const getDashboardUrl = (role) => {
       return '/admin-dashboard';
     case 'hr_manager':
       return '/hr-dashboard';
-    case 'supervisor':
     case 'psychiatrist':
+      return '/psychiatrist-dashboard';
+    case 'supervisor':
     case 'employee':
     default:
       return '/dashboard';

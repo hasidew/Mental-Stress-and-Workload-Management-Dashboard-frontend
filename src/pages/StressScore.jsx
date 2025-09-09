@@ -6,7 +6,7 @@ import apiService from '../utils/api';
 
 const StressScore = () => {
   const { user } = useAuth();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showWarning } = useToast();
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [currentScore, setCurrentScore] = useState(null);
@@ -18,6 +18,7 @@ const StressScore = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showSharingModal, setShowSharingModal] = useState(false);
+  const [hasAssignedTasks, setHasAssignedTasks] = useState(true);
 
   // Check if user is a supervisor
   const isSupervisor = user?.role === 'supervisor';
@@ -61,8 +62,18 @@ const StressScore = () => {
     try {
       const data = await apiService.getWorkloadDetails();
       setWorkloadDetails(data);
+      
+      // Check if user has assigned tasks
+      const totalAssignedTasks = (data.total_tasks || 0) + (data.pending_tasks || 0) + (data.high_priority_tasks || 0);
+      setHasAssignedTasks(totalAssignedTasks > 0);
+      
+      // Show warning if no tasks assigned
+      if (totalAssignedTasks === 0) {
+        showWarning('No tasks are currently assigned to you for today. Stress score will be calculated using only the assessment questions. The workload component will be set to 0, and your final score will be: (Normalized PSS × 0.7) + (0 × 0.3)');
+      }
     } catch (error) {
       console.log('Failed to fetch workload details');
+      setHasAssignedTasks(false);
     }
   };
 
@@ -94,6 +105,11 @@ const StressScore = () => {
         return;
       }
       answerArray.push(answers[i]);
+    }
+
+    // Show warning if no tasks assigned but allow submission
+    if (!hasAssignedTasks) {
+      showWarning('No tasks are currently assigned to you. Stress score will be calculated using only the assessment questions. The workload component will be set to 0, and your final score will be: (Normalized PSS × 0.7) + (0 × 0.3)');
     }
 
     try {
@@ -164,6 +180,15 @@ const StressScore = () => {
     }
   };
 
+  // New function to get workload stress description
+  const getWorkloadStressDescription = (hours) => {
+    if (hours < 7.22) return 'Below standard hours (0.0)';
+    if (hours >= 7.23 && hours <= 9.0) return 'Slightly above standard (0.5)';
+    if (hours >= 9.01 && hours <= 11.99) return 'Moderately above standard (1.0)';
+    if (hours >= 12.0) return 'Significantly above standard (2.0)';
+    return 'Standard hours (0.0)';
+  };
+
   if (loading) {
     return (
       <div className="bg-[#EDF4FA] min-h-screen flex items-center justify-center">
@@ -185,6 +210,26 @@ const StressScore = () => {
           </div>
           <p className="text-[#4F4F4F]">Complete the assessment to understand your stress levels and get personalized insights</p>
         </div>
+
+        {/* Task Assignment Warning */}
+        {!hasAssignedTasks && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">No Tasks Currently Assigned</h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>You don't have any tasks assigned for today. Your stress score will be calculated using only the assessment questions.</p>
+                  <p className="mt-1">The workload component will be set to 0, and your final score will be: <strong>Final Score = (Normalized PSS × 0.7) + (0 × 0.3)</strong></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Current Score Display */}
@@ -213,6 +258,25 @@ const StressScore = () => {
                 </p>
               </div>
               
+              {/* Updated Calculation Formula */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h3 className="text-sm font-semibold text-blue-800 mb-3">Updated Calculation Formula</h3>
+                <div className="text-xs text-blue-700 space-y-2">
+                  <div><strong>Normalized PSS:</strong> (PSS Score ÷ 40) × 10</div>
+                  <div><strong>Normalized Workload:</strong> (Raw Workload Score ÷ 2.0) × 10</div>
+                  <div><strong>Final Score:</strong> (Normalized PSS × 0.7) + (Normalized Workload × 0.3)</div>
+                  <div className="mt-2 pt-2 border-t border-blue-300">
+                    <strong>Workload Scoring:</strong>
+                    <div className="mt-1 space-y-1">
+                      <div>• &lt; 7.22 hrs: 0.0 (0/10)</div>
+                      <div>• 7.23-9.0 hrs: 0.5 (2.5/10)</div>
+                      <div>• 9.01-11.99 hrs: 1.0 (5/10)</div>
+                      <div>• ≥ 12.0 hrs: 2.0 (10/10)</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               {/* Detailed Breakdown */}
               <div className="bg-gray-50 rounded-lg p-4 mb-4">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Score Breakdown</h3>
@@ -226,12 +290,20 @@ const StressScore = () => {
                     <span className="font-medium">{currentScore.normalized_pss?.toFixed(1) || '0.0'}/10</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Workload Stress:</span>
-                    <span className="font-medium">{currentScore.workload_stress_score?.toFixed(1) || '0.0'}/2</span>
+                    <span className="text-gray-600">Raw Workload Score:</span>
+                    <span className="font-medium">{workloadDetails?.raw_workload_score?.toFixed(1) || '0.0'}/2</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Normalized Workload:</span>
+                    <span className="font-medium">{currentScore.workload_stress_score?.toFixed(1) || '0.0'}/10</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Hours Worked:</span>
                     <span className="font-medium">{currentScore.total_hours_worked?.toFixed(1) || '0.0'} hrs</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Workload Level:</span>
+                    <span className="font-medium text-blue-600">{getWorkloadStressDescription(currentScore.total_hours_worked)}</span>
                   </div>
                 </div>
                 
@@ -270,8 +342,8 @@ const StressScore = () => {
                         <div className="text-xs font-semibold text-gray-600 mb-1">Stress Components:</div>
                         <div className="space-y-1">
                           <div className="flex justify-between">
-                            <span className="text-gray-500">Base Stress:</span>
-                            <span className="font-medium">{workloadDetails.base_workload_stress?.toFixed(1) || '0.0'}</span>
+                            <span className="text-gray-500">Raw Workload:</span>
+                            <span className="font-medium">{workloadDetails.raw_workload_score?.toFixed(1) || '0.0'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">Priority Stress:</span>
@@ -284,6 +356,14 @@ const StressScore = () => {
                           <div className="flex justify-between">
                             <span className="text-gray-500">Pending Stress:</span>
                             <span className="font-medium">{workloadDetails.pending_stress?.toFixed(1) || '0.0'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Total Raw:</span>
+                            <span className="font-medium">{workloadDetails.total_workload_stress?.toFixed(1) || '0.0'}/2</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Normalized:</span>
+                            <span className="font-medium">{workloadDetails.normalized_workload_stress?.toFixed(1) || '0.0'}/10</span>
                           </div>
                         </div>
                       </div>

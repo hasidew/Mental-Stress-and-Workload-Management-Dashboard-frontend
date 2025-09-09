@@ -289,7 +289,7 @@ class ApiService {
   }
 
   async getPsychiatristDashboard() {
-    return await this.request('/dashboard/psychiatrist');
+    return await this.request('/psychiatrist/dashboard');
   }
 
   async getHrDashboard() {

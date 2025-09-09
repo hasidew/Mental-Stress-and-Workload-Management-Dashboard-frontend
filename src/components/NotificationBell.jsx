@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 
 const NotificationBell = () => {
   const { user } = useAuth();
   const { showError } = useToast();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -71,6 +73,66 @@ const NotificationBell = () => {
     }
   };
 
+  const handleNotificationClick = async (notification) => {
+    // Mark as read first
+    if (!notification.is_read) {
+      await handleMarkRead(notification.id);
+    }
+
+    // Close dropdown
+    setShowDropdown(false);
+
+    // Navigate based on notification type and related data
+    const userRole = user?.role;
+    
+    switch (notification.notification_type) {
+      case 'booking_created':
+      case 'booking_approved':
+      case 'booking_rejected':
+      case 'booking_cancelled':
+        // Navigate to psychiatrists page to view bookings
+        navigate('/psychiatrists');
+        break;
+        
+      case 'session_completed':
+        // Navigate to stress score page for assessment
+        navigate('/stress-score');
+        break;
+        
+      case 'task_assigned':
+      case 'task_completed':
+        // Navigate to task management
+        if (userRole === 'supervisor') {
+          navigate('/supervisor/task-management');
+        } else {
+          navigate('/task-management');
+        }
+        break;
+        
+      case 'stress_score_updated':
+        // Navigate to stress monitoring
+        if (userRole === 'supervisor') {
+          navigate('/supervisor/stress-monitoring');
+        } else {
+          navigate('/stress-score');
+        }
+        break;
+        
+      default:
+        // For unknown types, navigate to dashboard
+        if (userRole === 'admin') {
+          navigate('/admin-dashboard');
+        } else if (userRole === 'hr_manager') {
+          navigate('/hr-dashboard');
+        } else if (userRole === 'psychiatrist') {
+          navigate('/psychiatrist-dashboard');
+        } else {
+          navigate('/dashboard');
+        }
+        break;
+    }
+  };
+
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'booking_created':
@@ -83,6 +145,12 @@ const NotificationBell = () => {
         return '🚫';
       case 'session_completed':
         return '🎯';
+      case 'task_assigned':
+        return '📋';
+      case 'task_completed':
+        return '✅';
+      case 'stress_score_updated':
+        return '📊';
       default:
         return '🔔';
     }
@@ -154,12 +222,12 @@ const NotificationBell = () => {
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-gray-50 ${
                       notification.is_read 
                         ? 'bg-gray-50 border-gray-200' 
                         : 'bg-blue-50 border-blue-200'
                     }`}
-                    onClick={() => !notification.is_read && handleMarkRead(notification.id)}
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex items-start space-x-3">
                       <span className="text-lg">{getNotificationIcon(notification.notification_type)}</span>
@@ -182,6 +250,12 @@ const NotificationBell = () => {
                         <p className="text-xs text-gray-500 mt-2">
                           {formatDate(notification.created_at)}
                         </p>
+                        {/* Show click hint for unread notifications */}
+                        {!notification.is_read && (
+                          <p className="text-xs text-blue-600 mt-1 italic">
+                            Click to view details
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -195,7 +269,7 @@ const NotificationBell = () => {
       {/* Click outside to close */}
       {showDropdown && (
         <div 
-          className="fixed inset-0 z-40" 
+          className="fixed inset-0 z-40"
           onClick={() => setShowDropdown(false)}
         />
       )}

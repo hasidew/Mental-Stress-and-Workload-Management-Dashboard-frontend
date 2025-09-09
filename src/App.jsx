@@ -68,7 +68,7 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="psychiatrist-dashboard" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRole="psychiatrist">
                   <PsychiatristDashboard />
                 </ProtectedRoute>
               } />
