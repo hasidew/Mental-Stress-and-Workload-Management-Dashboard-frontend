@@ -41,8 +41,14 @@ const PsychiatristDashboard = () => {
     }
   };
 
-  const handleApproval = (booking) => {
-    setSelectedBooking(booking);
+  const handleApproval = (booking, timeSlot) => {
+    // Combine request data with time slot data for complete booking info
+    const completeBooking = {
+      ...booking,
+      booking_date: timeSlot?.booking_date || booking.booking_date,
+      duration_minutes: booking.duration_minutes || 30 // Default duration if not specified
+    };
+    setSelectedBooking(completeBooking);
     setApprovalData({
       status: 'approved',
       rejection_reason: ''
@@ -50,8 +56,14 @@ const PsychiatristDashboard = () => {
     setShowApprovalModal(true);
   };
 
-  const handleRejection = (booking) => {
-    setSelectedBooking(booking);
+  const handleRejection = (booking, timeSlot) => {
+    // Combine request data with time slot data for complete booking info
+    const completeBooking = {
+      ...booking,
+      booking_date: timeSlot?.booking_date || booking.booking_date,
+      duration_minutes: booking.duration_minutes || 30 // Default duration if not specified
+    };
+    setSelectedBooking(completeBooking);
     setApprovalData({
       status: 'rejected',
       rejection_reason: ''
@@ -92,7 +104,14 @@ const PsychiatristDashboard = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
+    if (!dateString) return 'No date provided';
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
+    return date.toLocaleDateString('en-GB', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -104,7 +123,14 @@ const PsychiatristDashboard = () => {
   };
 
   const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('en-GB', {
+    if (!dateString) return 'No time provided';
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Invalid time';
+    }
+    
+    return date.toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
       timeZone: 'Asia/Colombo'
@@ -385,20 +411,20 @@ const PsychiatristDashboard = () => {
                             <div>
                               <h4 className="font-medium">{request.employee_name}</h4>
                               <p className="text-sm text-gray-600">Booked by: {request.booked_by_name}</p>
-                              <p className="text-sm text-gray-500">{formatTime(request.booking_date)}</p>
+                              <p className="text-sm text-gray-500">{formatTime(timeSlot.booking_date)}</p>
                               {request.notes && (
                                 <p className="text-sm text-gray-600 mt-1">Notes: {request.notes}</p>
                               )}
                             </div>
                             <div className="flex space-x-2">
                               <button
-                                onClick={() => handleApproval(request)}
+                                onClick={() => handleApproval(request, timeSlot)}
                                 className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
                               >
                                 Approve
                               </button>
                               <button
-                                onClick={() => handleRejection(request)}
+                                onClick={() => handleRejection(request, timeSlot)}
                                 className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
                               >
                                 Reject
@@ -484,7 +510,7 @@ const PsychiatristDashboard = () => {
                 <strong>Date:</strong> {formatDate(selectedBooking.booking_date)}
               </p>
               <p className="text-sm text-gray-600 mb-2">
-                <strong>Duration:</strong> {selectedBooking.duration_minutes} minutes
+                <strong>Duration:</strong> {selectedBooking.duration_minutes || 'Not specified'} minutes
               </p>
               {selectedBooking.notes && (
                 <p className="text-sm text-gray-600 mb-4">

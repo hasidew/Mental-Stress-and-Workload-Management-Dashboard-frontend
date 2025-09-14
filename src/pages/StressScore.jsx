@@ -247,16 +247,6 @@ const StressScore = () => {
               </p>
               
               {/* Score Explanation */}
-              <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                <p className="text-xs text-gray-600 text-center">
-                  <strong>How to interpret:</strong> A score of 0-3 indicates low stress, 4-6 moderate stress, 
-                  7-8.5 high stress, and 8.6+ critical stress. Even with all "Never" answers, 
-                  you may score in the moderate range due to PSS-10 reverse scoring methodology.
-                </p>
-                <p className="text-xs text-gray-500 text-center mt-1">
-                  <strong>Note:</strong> PSS-10 maximum score is 24/40 (not 40/40) due to reverse scoring design.
-                </p>
-              </div>
               
               {/* Updated Calculation Formula */}
               

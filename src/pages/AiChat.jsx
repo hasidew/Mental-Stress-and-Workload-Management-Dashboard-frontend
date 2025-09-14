@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import apiService from '../utils/api';
+import { parseBoldText } from '../utils/textFormatting.jsx';
 
 const AiChat = () => {
   const { user } = useAuth();
@@ -13,7 +14,7 @@ const AiChat = () => {
     {
       id: 1,
       type: 'ai',
-      content: "Hello! I'm your AI wellness assistant. I'm here to help you with stress management, workload balance, and mental wellness tips. How can I assist you today?",
+      content: "Hello! I'm your AI wellness assistant. I'm here to help you with **stress management**, **workload balance**, and mental wellness tips. How can I assist you today?",
       timestamp: new Date().toLocaleTimeString('en-GB', { 
         hour: '2-digit', 
         minute: '2-digit',
@@ -95,7 +96,7 @@ const AiChat = () => {
       {
         id: 1,
         type: 'ai',
-        content: "Hello! I'm your AI wellness assistant. I'm here to help you with stress management, workload balance, and mental wellness tips. How can I assist you today?",
+        content: "Hello! I'm your AI wellness assistant. I'm here to help you with **stress management**, **workload balance**, and mental wellness tips. How can I assist you today?",
         timestamp: new Date().toLocaleTimeString('en-GB', { 
           hour: '2-digit', 
           minute: '2-digit',
@@ -256,7 +257,7 @@ const AiChat = () => {
                 {messages.map((message) => (
                   <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-xs lg:max-w-md ${message.type === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-[#212121]'} rounded-lg p-3`}>
-                      <p className="whitespace-pre-line">{message.content}</p>
+                      <div className="whitespace-pre-line">{parseBoldText(message.content)}</div>
                       <p className={`text-xs mt-2 ${message.type === 'user' ? 'text-blue-100' : 'text-[#4F4F4F]'}`}>
                         {message.timestamp}
                       </p>
