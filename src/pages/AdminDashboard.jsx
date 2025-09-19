@@ -329,7 +329,7 @@ const AdminDashboard = () => {
       setConsultants(consultantsData);
       setDashboardData(dashboardData);
     } catch (error) {
-      showError(error.message || 'Failed to delete consultant');
+      showError(error.message || 'Failed to delete Psychiatrists');
     } finally {
       setShowDeleteConfirmModal(false);
       setConsultantToDelete(null);
@@ -428,7 +428,7 @@ const AdminDashboard = () => {
           <div className="bg-white rounded-2xl p-6 shadow-md">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[#4F4F4F] text-sm">Consultants</p>
+                <p className="text-[#4F4F4F] text-sm">Psychiatrists</p>
                 <p className="text-2xl font-bold text-red-600">
                   {dashboardData?.stats?.consultants || 0}
                 </p>
@@ -759,12 +759,12 @@ const AdminDashboard = () => {
             {activeTab === 'consultants' && (
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-[#212121]">All Consultants</h3>
+                  <h3 className="text-lg font-semibold text-[#212121]">All Psychiatrists</h3>
                   <button
                     onClick={() => setShowCreateConsultantModal(true)}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
                   >
-                    Add Consultant
+                    Add Psychiatrists
                   </button>
                 </div>
                 <div className="overflow-x-auto">
@@ -1523,7 +1523,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-[#212121]">Create New Consultant</h3>
+          <h3 className="text-lg font-semibold text-[#212121]">Create New Psychiatrist</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-xl"
@@ -1633,7 +1633,7 @@ const CreateConsultantModal = ({ onClose, onSubmit }) => {
               disabled={isSubmitting}
               className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Creating...' : 'Create Consultant'}
+              {isSubmitting ? 'Creating...' : 'Create Psychiatrist'}
             </button>
             <button
               type="button"
@@ -2848,7 +2848,7 @@ const CreateConsultantWithAvailabilityModal = ({ onClose, onSubmit }) => {
       setIsSubmitting(true);
       await onSubmit(formData);
     } catch (error) {
-      showError(error.message || 'Failed to create consultant');
+      showError(error.message || 'Failed to create Psychiatrist');
     } finally {
       setIsSubmitting(false);
     }
@@ -2858,7 +2858,7 @@ const CreateConsultantWithAvailabilityModal = ({ onClose, onSubmit }) => {
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-[#212121]">Add New Consultant</h3>
+          <h3 className="text-lg font-semibold text-[#212121]">Add New Psychiatrist</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-xl"
@@ -3046,7 +3046,7 @@ const CreateConsultantWithAvailabilityModal = ({ onClose, onSubmit }) => {
               disabled={isSubmitting}
               className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Creating...' : 'Create Consultant'}
+              {isSubmitting ? 'Creating...' : 'Create Psychiatrist'}
             </button>
             <button
               type="button"
@@ -3164,7 +3164,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
       setIsSubmitting(true);
       await onSubmit(formData);
     } catch (error) {
-      showError(error.message || 'Failed to update consultant');
+      showError(error.message || 'Failed to update Psychiatrist');
     } finally {
       setIsSubmitting(false);
     }
@@ -3174,7 +3174,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-[#212121]">Edit Consultant</h3>
+          <h3 className="text-lg font-semibold text-[#212121]">Edit Psychiatrist</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-xl"
@@ -3197,7 +3197,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
                     ? 'border-red-500 focus:ring-red-500' 
                     : 'border-gray-200 focus:ring-blue-500'
                 }`}
-                placeholder="Enter consultant name"
+                placeholder="Enter Psychiatrist name"
               />
               {touched.name && errors.name && (
                 <p className="text-red-500 text-sm mt-1">{errors.name}</p>
@@ -3362,7 +3362,7 @@ const EditConsultantModal = ({ onClose, onSubmit, consultant }) => {
               disabled={isSubmitting}
               className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Updating...' : 'Update Consultant'}
+              {isSubmitting ? 'Updating...' : 'Update Psychiatrist'}
             </button>
             <button
               type="button"
@@ -3463,7 +3463,7 @@ const ReviewRequestModal = ({ onClose, request }) => {
           {/* Consultant Information (if applicable) */}
           {(request.job_role === 'Consultant' || request.job_role === 'Psychiatrist') && (
             <div className="bg-purple-50 rounded-lg p-4 md:col-span-2">
-              <h3 className="text-lg font-semibold text-[#212121] mb-3">Consultant Information</h3>
+              <h3 className="text-lg font-semibold text-[#212121] mb-3">Psychiatrist Information</h3>
               <div className="space-y-2 text-sm">
                 <div><strong>Registration Number:</strong> {request.registration_number || 'Not provided'}</div>
                 <div><strong>Hospital:</strong> {request.hospital || 'Not provided'}</div>
